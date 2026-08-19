@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useLeagueData } from '../context/LeagueDataContext';
 import { leagueAvatarUrl, initials } from '../lib/avatar';
@@ -5,21 +6,33 @@ import { leagueAvatarUrl, initials } from '../lib/avatar';
 export function Nav() {
   const { league } = useLeagueData();
   const avatar = leagueAvatarUrl(league);
+  const [open, setOpen] = useState(false);
 
   return (
     <header className="nav">
-      <div className="nav-brand">
-        {avatar ? (
-          <img src={avatar} alt="" className="nav-avatar" />
-        ) : (
-          <div className="nav-avatar nav-avatar-fallback">{league ? initials(league.name) : '🏈'}</div>
-        )}
-        <div>
-          <div className="nav-title">{league?.name ?? 'Sleeper Liga'}</div>
-          <div className="nav-subtitle">Saison {league?.season ?? ''}</div>
+      <div className="nav-bar-top">
+        <div className="nav-brand">
+          {avatar ? (
+            <img src={avatar} alt="" className="nav-avatar" />
+          ) : (
+            <div className="nav-avatar nav-avatar-fallback">{league ? initials(league.name) : '🏈'}</div>
+          )}
+          <div>
+            <div className="nav-title">{league?.name ?? 'Sleeper Liga'}</div>
+            <div className="nav-subtitle">Saison {league?.season ?? ''}</div>
+          </div>
         </div>
+        <button
+          type="button"
+          className="nav-burger"
+          aria-label={open ? 'Menü schließen' : 'Menü öffnen'}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <span className={`nav-burger-bar${open ? ' nav-burger-bar-open' : ''}`} />
+        </button>
       </div>
-      <nav className="nav-links">
+      <nav className={`nav-links${open ? ' nav-links-open' : ''}`} onClick={() => setOpen(false)}>
         <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
           Rangliste
         </NavLink>
