@@ -71,7 +71,7 @@ export function PlayoffBracket({ seeds }: { seeds: Team[] }) {
         <div className="bracket-round">
           <div className="bracket-round-title">Finale</div>
           <div className="bracket-matches bracket-col-1-centered">
-            <MatchBox top={{ label: 'Sieger Halbfinale 1' }} bottom={{ label: 'Sieger Halbfinale 2' }} />
+            <MatchBox top={{ label: 'Sieger:in Halbfinale 1' }} bottom={{ label: 'Sieger:in Halbfinale 2' }} />
           </div>
         </div>
       </div>
@@ -79,11 +79,11 @@ export function PlayoffBracket({ seeds }: { seeds: Team[] }) {
       <div className="bracket-placements">
         <div className="bracket-placement-card">
           <div className="bracket-round-title">Spiel um Platz 3</div>
-          <MatchBox top={{ label: 'Verlierer Halbfinale 1' }} bottom={{ label: 'Verlierer Halbfinale 2' }} />
+          <MatchBox top={{ label: 'Verlierer:in Halbfinale 1' }} bottom={{ label: 'Verlierer:in Halbfinale 2' }} />
         </div>
         <div className="bracket-placement-card">
           <div className="bracket-round-title">Spiel um Platz 5</div>
-          <MatchBox top={{ label: 'Verlierer #3 / #6' }} bottom={{ label: 'Verlierer #4 / #5' }} />
+          <MatchBox top={{ label: 'Verlierer:in #3 / #6' }} bottom={{ label: 'Verlierer:in #4 / #5' }} />
         </div>
       </div>
     </div>
