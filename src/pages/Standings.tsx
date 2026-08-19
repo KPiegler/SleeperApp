@@ -49,7 +49,7 @@ export function Standings() {
               <th>Team</th>
               <th>S-N-U</th>
               <th>Punkte</th>
-              <th>Gegner-Punkte</th>
+              <th>Gegen-Punkte</th>
             </tr>
           </thead>
           <tbody>
