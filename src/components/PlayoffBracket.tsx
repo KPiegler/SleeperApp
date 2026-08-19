@@ -63,8 +63,8 @@ export function PlayoffBracket({ seeds }: { seeds: Team[] }) {
         <div className="bracket-round">
           <div className="bracket-round-title">Halbfinale</div>
           <div className="bracket-matches bracket-col-2-centered">
-            <MatchBox top={{ team: s1, seed: 1 }} bottom={{ label: 'Sieger #4 / #5' }} />
-            <MatchBox top={{ team: s2, seed: 2 }} bottom={{ label: 'Sieger #3 / #6' }} />
+            <MatchBox top={{ team: s1, seed: 1 }} bottom={{ label: 'Sieger:in #4 / #5' }} />
+            <MatchBox top={{ team: s2, seed: 2 }} bottom={{ label: 'Sieger:in #3 / #6' }} />
           </div>
         </div>
 
