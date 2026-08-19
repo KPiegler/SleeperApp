@@ -482,6 +482,283 @@ h2 {
   max-width: 260px;
 }
 
+/* Schedule / week picker */
+.week-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.btn-ghost {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  margin-top: 0;
+}
+
+.btn-ghost:hover {
+  background: var(--surface-2);
+}
+
+.btn-ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.week-select {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.55rem 0.9rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.matchup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.matchup-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.matchup-team {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.8rem 1rem;
+}
+
+.matchup-team-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.matchup-points {
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.matchup-team-won .matchup-points {
+  color: #4ade80;
+}
+
+.matchup-vs {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 0.15rem 0;
+}
+
+.matchup-bye {
+  color: var(--muted);
+  font-style: italic;
+  justify-content: center;
+}
+
+/* Fun Facts */
+.fun-fact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.fun-fact-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.1rem 1.2rem;
+}
+
+.fun-fact-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+.fun-fact-emoji {
+  font-size: 1.3rem;
+}
+
+.fun-fact-title {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.fun-fact-headline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.fun-fact-points {
+  margin-left: auto;
+  color: var(--accent-2);
+  font-weight: 800;
+}
+
+.fun-fact-sub {
+  margin-top: 0.5rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.fun-team-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.fun-team-pill .table-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+
+/* Streaks */
+.streak-board {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.streak-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.streak-row:last-child {
+  border-bottom: none;
+}
+
+.streak-badge {
+  font-weight: 700;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.streak-W {
+  color: #4ade80;
+}
+
+.streak-L {
+  color: #93a1bb;
+}
+
+.streak-T {
+  color: var(--muted);
+}
+
+/* Waiver legend */
+.waiver-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.waiver-list-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.waiver-list-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.waiver-list-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.waiver-list-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waiver-list-top .fun-fact-points,
+.waiver-list-top .draft-value {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.waiver-list-row .fun-team-pill {
+  font-size: 0.82rem;
+  padding-left: 1.7rem;
+}
+
+.waiver-list-row .fun-team-pill .table-avatar {
+  width: 20px;
+  height: 20px;
+}
+
+/* Draft value badges */
+.draft-value {
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.draft-value-steal {
+  background: rgba(34, 197, 94, 0.16);
+  color: #4ade80;
+}
+
+.draft-value-reach {
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+}
+
+.draft-value-neutral {
+  background: rgba(148, 161, 187, 0.16);
+  color: var(--muted);
+}
+
 /* Participants */
 .card-grid {
   display: grid;

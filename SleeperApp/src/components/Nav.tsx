@@ -23,11 +23,23 @@ export function Nav() {
         <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
           Rangliste
         </NavLink>
+        <NavLink to="/spielplan" className={({ isActive }) => (isActive ? 'active' : '')}>
+          Spielplan
+        </NavLink>
         <NavLink to="/teilnehmer" className={({ isActive }) => (isActive ? 'active' : '')}>
           Teilnehmer
         </NavLink>
         <NavLink to="/top-spieler" className={({ isActive }) => (isActive ? 'active' : '')}>
           Top Spieler
+        </NavLink>
+        <NavLink to="/fun-facts" className={({ isActive }) => (isActive ? 'active' : '')}>
+          Fun Facts
+        </NavLink>
+        <NavLink to="/draft" className={({ isActive }) => (isActive ? 'active' : '')}>
+          Draft
+        </NavLink>
+        <NavLink to="/awards" className={({ isActive }) => (isActive ? 'active' : '')}>
+          Awards
         </NavLink>
       </nav>
     </header>

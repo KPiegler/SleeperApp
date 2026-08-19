@@ -5,6 +5,7 @@ export interface SleeperLeague {
   status: string;
   total_rosters: number;
   avatar: string | null;
+  draft_id: string | null;
   roster_positions: string[];
   scoring_settings: Record<string, number>;
   settings: {
@@ -70,6 +71,43 @@ export interface PlayerLite {
 export type SleeperPlayerRaw = Partial<PlayerLite> & Record<string, unknown>;
 
 export type WeekStats = Record<string, Record<string, number>>;
+
+export interface SleeperMatchup {
+  roster_id: number;
+  matchup_id: number | null;
+  points: number;
+  players: string[] | null;
+  starters: string[] | null;
+  players_points: Record<string, number> | null;
+}
+
+export interface SleeperTransaction {
+  transaction_id: string;
+  type: 'trade' | 'waiver' | 'free_agent';
+  status: string;
+  leg: number;
+  roster_ids: number[];
+  adds: Record<string, number> | null;
+  drops: Record<string, number> | null;
+}
+
+export interface DraftPick {
+  pick_no: number;
+  round: number;
+  draft_slot: number;
+  roster_id: number;
+  picked_by: string;
+  player_id: string;
+  is_keeper: boolean | null;
+  metadata: {
+    first_name?: string;
+    last_name?: string;
+    position?: string;
+    team?: string;
+    injury_status?: string;
+  } | null;
+  reactions: Record<string, string[]> | null;
+}
 
 export interface Team {
   rosterId: number;
