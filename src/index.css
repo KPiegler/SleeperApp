@@ -681,6 +681,25 @@ h2 {
   letter-spacing: 0.03em;
 }
 
+.fun-fact-card-placeholder {
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+.fun-fact-placeholder-tag {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+}
+
 .fun-fact-headline {
   display: flex;
   align-items: center;

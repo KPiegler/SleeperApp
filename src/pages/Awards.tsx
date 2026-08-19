@@ -26,6 +26,7 @@ export function Awards() {
   const { league, nflState, teams, players, loading: leagueLoading, error: leagueError } = useLeagueData();
   const teamByRosterId = useMemo(() => new Map(teams.map((t) => [t.rosterId, t])), [teams]);
   const weeks = useMemo(() => completedRegularWeeks(nflState, league), [nflState, league]);
+  const demo = (i: number) => (teams.length > 0 ? teams[i % teams.length] : undefined);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,10 +106,68 @@ export function Awards() {
       <h1>Season Awards</h1>
 
       {weeks.length === 0 && (
-        <div className="banner">
-          Es wurde noch keine Woche der regulären Saison gespielt – die Awards werden erst spannend, sobald
-          Ergebnisse da sind.
-        </div>
+        <>
+          <div className="banner">
+            Es wurde noch keine Woche der regulären Saison gespielt – hier siehst du Beispieldaten, damit du
+            schon mal einen Eindruck bekommst. Die echten Awards gibt's ab dem ersten Spieltag.
+          </div>
+
+          <div className="fun-fact-grid">
+            <StatCard emoji="🏆" title="MVP-Manager" placeholder>
+              <div className="fun-fact-headline">
+                <TeamPill team={demo(0)} />
+                <span className="fun-fact-points">642.80 Pkt.</span>
+              </div>
+              <div className="fun-fact-sub">die meisten Gesamtpunkte der Liga bisher</div>
+            </StatCard>
+
+            <StatCard emoji="🪦" title="Rote Laterne" placeholder>
+              <div className="fun-fact-headline">
+                <TeamPill team={demo(1)} />
+                <span className="fun-fact-points">2-9</span>
+              </div>
+              <div className="fun-fact-sub">die schwächste Bilanz der Liga bisher</div>
+            </StatCard>
+
+            <StatCard emoji="🪑" title="Bankwärmer-Award" placeholder>
+              <div className="fun-fact-headline">
+                <TeamPill team={demo(2)} />
+                <span className="fun-fact-points">184.30 Pkt.</span>
+              </div>
+              <div className="fun-fact-sub">insgesamt ungenutzt auf der Bank liegen gelassen</div>
+            </StatCard>
+
+            <StatCard emoji="💔" title="Herzschmerz-Award" placeholder>
+              <div className="fun-fact-headline">
+                <TeamPill team={demo(3)} />
+                <span className="fun-fact-points">4×</span>
+              </div>
+              <div className="fun-fact-sub">Niederlagen mit weniger als 5 Punkten Unterschied</div>
+            </StatCard>
+
+            <StatCard emoji="💎" title="Draft-Steal des Jahres" placeholder>
+              <div className="fun-fact-headline">
+                <PositionBadge position="WR" />
+                Platzhalter-Spieler
+                <span className="fun-fact-points">Rang 3</span>
+              </div>
+              <div className="fun-fact-sub">
+                Pick 84 von <TeamPill team={demo(4)} /> · 187.60 Saisonpunkte
+              </div>
+            </StatCard>
+
+            <StatCard emoji="🥴" title="Draft-Flop des Jahres" placeholder>
+              <div className="fun-fact-headline">
+                <PositionBadge position="RB" />
+                Platzhalter-Spieler
+                <span className="fun-fact-points">Rang 58</span>
+              </div>
+              <div className="fun-fact-sub">
+                Pick 12 von <TeamPill team={demo(5)} /> · nur 41.20 Saisonpunkte
+              </div>
+            </StatCard>
+          </div>
+        </>
       )}
 
       {loading && weeks.length > 0 && <LoadingState label="Werte die Saison aus…" />}

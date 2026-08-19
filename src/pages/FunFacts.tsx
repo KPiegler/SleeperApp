@@ -34,6 +34,7 @@ export function FunFacts() {
 
   const weeks = useMemo(() => completedRegularWeeks(nflState, league), [nflState, league]);
   const teamByRosterId = useMemo(() => new Map(teams.map((t) => [t.rosterId, t])), [teams]);
+  const demo = (i: number) => (teams.length > 0 ? teams[i % teams.length] : undefined);
 
   useEffect(() => {
     if (leagueLoading || !league) return;
@@ -95,10 +96,113 @@ export function FunFacts() {
       <h1>Fun Facts</h1>
 
       {weeks.length === 0 && (
-        <div className="banner">
-          Es wurde noch keine Woche der regulären Saison gespielt – hier gibt's noch nichts zu feiern
-          (oder zu bereuen). Schau nach dem ersten Spieltag nochmal vorbei!
-        </div>
+        <>
+          <div className="banner">
+            Es wurde noch keine Woche der regulären Saison gespielt – hier siehst du Beispieldaten, damit du
+            schon mal einen Eindruck bekommst. Echte Werte gibt's ab dem ersten Spieltag.
+          </div>
+
+          <div className="fun-fact-grid">
+            <FunFactCard emoji="🔥" title="Beste Einzelperformance" placeholder>
+              <div className="fun-fact-headline">
+                <PositionBadge position="RB" />
+                Platzhalter-Spieler
+                <span className="fun-fact-points">34.50 Pkt.</span>
+              </div>
+              <div className="fun-fact-sub">
+                Woche 1 · gehörte damals zu <TeamPill team={demo(0)} />
+              </div>
+            </FunFactCard>
+
+            <FunFactCard emoji="💥" title="Höchster Sieg" placeholder>
+              <div className="fun-fact-headline">
+                <TeamPill team={demo(1)} />
+                <span className="fun-fact-points">+58.20</span>
+              </div>
+              <div className="fun-fact-sub">
+                schlug <TeamPill team={demo(2)} /> mit 142.30 : 84.10 in Woche 1
+              </div>
+            </FunFactCard>
+
+            <FunFactCard emoji="😅" title="Knappstes Spiel" placeholder>
+              <div className="fun-fact-headline">
+                <TeamPill team={demo(3)} />
+                <span className="fun-fact-points">+0.80</span>
+              </div>
+              <div className="fun-fact-sub">
+                knapp gegen <TeamPill team={demo(4)} /> mit 101.40 : 100.60 in Woche 1
+              </div>
+            </FunFactCard>
+
+            <FunFactCard emoji="🚀" title="Beste Wochenpunktzahl" placeholder>
+              <div className="fun-fact-headline">
+                <TeamPill team={demo(5)} />
+                <span className="fun-fact-points">148.90 Pkt.</span>
+              </div>
+              <div className="fun-fact-sub">in Woche 1</div>
+            </FunFactCard>
+
+            <FunFactCard emoji="🥶" title="Schwächste Wochenpunktzahl" placeholder>
+              <div className="fun-fact-headline">
+                <TeamPill team={demo(6)} />
+                <span className="fun-fact-points">61.20 Pkt.</span>
+              </div>
+              <div className="fun-fact-sub">in Woche 1</div>
+            </FunFactCard>
+
+            <FunFactCard emoji="🪑" title="Meiste Punkte auf der Bank verschenkt" placeholder>
+              <div className="fun-fact-headline">
+                <TeamPill team={demo(7)} />
+                <span className="fun-fact-points">38.40 Pkt.</span>
+              </div>
+              <div className="fun-fact-sub">blieben in Woche 1 ungenutzt auf der Bank</div>
+            </FunFactCard>
+
+            <FunFactCard emoji="💔" title="Pechvogel der Saison" placeholder>
+              <div className="fun-fact-headline">
+                <TeamPill team={demo(8)} />
+                <span className="fun-fact-points">112.70 Pkt.</span>
+              </div>
+              <div className="fun-fact-sub">
+                verlor in Woche 1 trotzdem – die höchste Punktzahl einer Woche, die am Ende nicht gereicht hat
+              </div>
+            </FunFactCard>
+          </div>
+
+          <h2>
+            Aktuelle Serien <span className="fun-fact-placeholder-tag">Beispiel</span>
+          </h2>
+          <div className="streak-board">
+            <div className="streak-row">
+              <TeamPill team={demo(0)} />
+              <span className="streak-badge streak-W">🔥 3 Siege</span>
+            </div>
+            <div className="streak-row">
+              <TeamPill team={demo(1)} />
+              <span className="streak-badge streak-L">❄️ 2 Niederlagen</span>
+            </div>
+            <div className="streak-row">
+              <TeamPill team={demo(2)} />
+              <span className="streak-badge streak-T">➖ 1 Remis</span>
+            </div>
+          </div>
+
+          <h2>
+            Waiver-Wire-Legende <span className="fun-fact-placeholder-tag">Beispiel</span>
+          </h2>
+          <div className="fun-fact-grid">
+            <FunFactCard emoji="🕵️" title="Bester Waiver-Pickup" placeholder>
+              <div className="fun-fact-headline">
+                <PositionBadge position="WR" />
+                Platzhalter-Spieler
+                <span className="fun-fact-points">64.30 Pkt.</span>
+              </div>
+              <div className="fun-fact-sub">
+                seit Woche 2 bei <TeamPill team={demo(3)} /> von der Waiver Wire
+              </div>
+            </FunFactCard>
+          </div>
+        </>
       )}
 
       {loading && weeks.length > 0 && <LoadingState label="Werte alle Wochen aus…" />}
