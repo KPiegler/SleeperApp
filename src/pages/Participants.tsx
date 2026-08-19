@@ -7,7 +7,7 @@ export function Participants() {
 
   return (
     <div className="page">
-      <h1>Teilnehmer</h1>
+      <h1>Teilnehmer:innen</h1>
       <div className="card-grid">
         {teams.map((team) => (
           <Link to={`/team/${team.rosterId}`} key={team.rosterId} className="participant-card">
