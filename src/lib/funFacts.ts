@@ -28,6 +28,14 @@ export interface BenchFact {
   benchPoints: number;
 }
 
+export interface LineupFact {
+  week: number;
+  rosterId: number;
+  efficiency: number;
+  starterPoints: number;
+  benchPoints: number;
+}
+
 export interface FunFacts {
   topPlayerPerformance: PlayerPerformanceFact | null;
   biggestBlowout: MatchupFact | null;
@@ -36,6 +44,7 @@ export interface FunFacts {
   lowestTeamWeek: TeamWeekFact | null;
   mostBenchPoints: BenchFact | null;
   unluckiestLoss: TeamWeekFact | null;
+  bestLineup: LineupFact | null;
 }
 
 export function computeFunFacts(weeks: number[], matchupsByWeek: Map<number, SleeperMatchup[]>): FunFacts {
@@ -46,6 +55,7 @@ export function computeFunFacts(weeks: number[], matchupsByWeek: Map<number, Sle
   let biggestBlowout: MatchupFact | null = null;
   let closestMatchup: MatchupFact | null = null;
   let unluckiestLoss: TeamWeekFact | null = null;
+  let bestLineup: LineupFact | null = null;
 
   for (const week of weeks) {
     const entries = matchupsByWeek.get(week) ?? [];
@@ -72,6 +82,15 @@ export function computeFunFacts(weeks: number[], matchupsByWeek: Map<number, Sle
         const benchPoints = benchIds.reduce((sum, id) => sum + (m.players_points?.[id] ?? 0), 0);
         if (benchPoints > 0 && (!mostBenchPoints || benchPoints > mostBenchPoints.benchPoints)) {
           mostBenchPoints = { week, rosterId: m.roster_id, benchPoints };
+        }
+
+        const starterPoints = m.starters.reduce((sum, id) => sum + (m.players_points?.[id] ?? 0), 0);
+        const total = starterPoints + benchPoints;
+        if (total > 0) {
+          const efficiency = (starterPoints / total) * 100;
+          if (!bestLineup || efficiency > bestLineup.efficiency) {
+            bestLineup = { week, rosterId: m.roster_id, efficiency, starterPoints, benchPoints };
+          }
         }
       }
     }
@@ -117,5 +136,6 @@ export function computeFunFacts(weeks: number[], matchupsByWeek: Map<number, Sle
     lowestTeamWeek,
     mostBenchPoints,
     unluckiestLoss,
+    bestLineup,
   };
 }

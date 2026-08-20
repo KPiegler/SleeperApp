@@ -5,6 +5,7 @@ import { sleeper } from '../api/sleeper';
 import { initials } from '../lib/avatar';
 import { maxLeagueWeek, weekLabel } from '../lib/weeks';
 import { injuryCounts } from '../lib/seasonAwards';
+import { computeFunFacts } from '../lib/funFacts';
 import { LoadingState, ErrorState } from '../components/LoadingError';
 import { StatCard } from '../components/StatCard';
 import { TeamPill } from '../components/TeamPill';
@@ -119,6 +120,11 @@ export function Schedule() {
 
   const teamByRosterId = useMemo(() => new Map(teams.map((t) => [t.rosterId, t])), [teams]);
 
+  const weekFacts = useMemo(() => {
+    if (week === null || matchups.length === 0) return null;
+    return computeFunFacts([week], new Map([[week, matchups]]));
+  }, [week, matchups]);
+
   const pairs = useMemo(() => {
     const byMatchupId = new Map<number, SleeperMatchup[]>();
     const byes: SleeperMatchup[] = [];
@@ -204,6 +210,52 @@ export function Schedule() {
                 </div>
               );
             })}
+          </div>
+        </>
+      )}
+
+      {played && weekFacts && (weekFacts.biggestBlowout || weekFacts.closestMatchup || weekFacts.bestLineup) && (
+        <>
+          <h2>Wochen-Highlights</h2>
+          <div className="fun-fact-grid">
+            {weekFacts.biggestBlowout && (
+              <StatCard emoji="💥" title="Höchster Sieg der Woche">
+                <div className="fun-fact-headline">
+                  <TeamPill team={teamByRosterId.get(weekFacts.biggestBlowout.winnerRosterId)} />
+                  <span className="fun-fact-points">+{weekFacts.biggestBlowout.margin.toFixed(2)}</span>
+                </div>
+                <div className="fun-fact-sub">
+                  schlug <TeamPill team={teamByRosterId.get(weekFacts.biggestBlowout.loserRosterId)} /> mit{' '}
+                  {weekFacts.biggestBlowout.winnerPoints.toFixed(2)} : {weekFacts.biggestBlowout.loserPoints.toFixed(2)}
+                </div>
+              </StatCard>
+            )}
+
+            {weekFacts.closestMatchup && (
+              <StatCard emoji="😅" title="Knappstes Spiel der Woche">
+                <div className="fun-fact-headline">
+                  <TeamPill team={teamByRosterId.get(weekFacts.closestMatchup.winnerRosterId)} />
+                  <span className="fun-fact-points">+{weekFacts.closestMatchup.margin.toFixed(2)}</span>
+                </div>
+                <div className="fun-fact-sub">
+                  knapp gegen <TeamPill team={teamByRosterId.get(weekFacts.closestMatchup.loserRosterId)} /> mit{' '}
+                  {weekFacts.closestMatchup.winnerPoints.toFixed(2)} : {weekFacts.closestMatchup.loserPoints.toFixed(2)}
+                </div>
+              </StatCard>
+            )}
+
+            {weekFacts.bestLineup && (
+              <StatCard emoji="🧠" title="Bestes Lineup-Management">
+                <div className="fun-fact-headline">
+                  <TeamPill team={teamByRosterId.get(weekFacts.bestLineup.rosterId)} />
+                  <span className="fun-fact-points">{weekFacts.bestLineup.efficiency.toFixed(1)} %</span>
+                </div>
+                <div className="fun-fact-sub">
+                  der möglichen Kaderpunkte in der Startaufstellung – nur {weekFacts.bestLineup.benchPoints.toFixed(2)} Pkt.
+                  blieben ungenutzt auf der Bank
+                </div>
+              </StatCard>
+            )}
           </div>
         </>
       )}
