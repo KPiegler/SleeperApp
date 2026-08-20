@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useLeagueData } from '../context/LeagueDataContext';
 import { sleeper } from '../api/sleeper';
 import { getPlayersFor } from '../api/playersCache';
@@ -7,8 +7,10 @@ import { computeFunFacts } from '../lib/funFacts';
 import type { FunFacts as FunFactsResult } from '../lib/funFacts';
 import { computeStreaks } from '../lib/streaks';
 import type { TeamStreak } from '../lib/streaks';
-import { computeWaiverLegend } from '../lib/waiverLegend';
-import type { WaiverPickup } from '../lib/waiverLegend';
+import { computeWaiverLegend, computeWaiverActivity } from '../lib/waiverLegend';
+import type { WaiverPickup, WaiverActivity } from '../lib/waiverLegend';
+import { computeTrades } from '../lib/trades';
+import type { TradeResult } from '../lib/trades';
 import { PositionBadge } from '../components/PositionBadge';
 import { LoadingState, ErrorState } from '../components/LoadingError';
 import { TeamPill } from '../components/TeamPill';
@@ -30,11 +32,38 @@ export function FunFacts() {
   const [facts, setFacts] = useState<FunFactsResult | null>(null);
   const [streaks, setStreaks] = useState<TeamStreak[]>([]);
   const [waiverLegend, setWaiverLegend] = useState<WaiverPickup[]>([]);
+  const [waiverActivity, setWaiverActivity] = useState<WaiverActivity[]>([]);
+  const [trades, setTrades] = useState<TradeResult[]>([]);
   const [extraPlayers, setExtraPlayers] = useState<Record<string, PlayerLite>>({});
 
   const weeks = useMemo(() => completedRegularWeeks(nflState, league), [nflState, league]);
   const teamByRosterId = useMemo(() => new Map(teams.map((t) => [t.rosterId, t])), [teams]);
   const demo = (i: number) => (teams.length > 0 ? teams[i % teams.length] : undefined);
+  const allPlayers = useMemo(() => ({ ...players, ...extraPlayers }), [players, extraPlayers]);
+  const playerName = (id: string) => {
+    const p = allPlayers[id];
+    return p ? `${p.first_name} ${p.last_name}` : id;
+  };
+
+  const bestTradeSide = useMemo(() => {
+    let best: { trade: TradeResult; side: (typeof trades)[number]['sides'][number] } | null = null;
+    for (const trade of trades) {
+      for (const side of trade.sides) {
+        if (!best || side.pointsSinceTrade > best.side.pointsSinceTrade) best = { trade, side };
+      }
+    }
+    return best;
+  }, [trades]);
+
+  const worstTradeSide = useMemo(() => {
+    let worst: { trade: TradeResult; side: (typeof trades)[number]['sides'][number] } | null = null;
+    for (const trade of trades) {
+      for (const side of trade.sides) {
+        if (!worst || side.pointsSinceTrade < worst.side.pointsSinceTrade) worst = { trade, side };
+      }
+    }
+    return worst;
+  }, [trades]);
 
   useEffect(() => {
     if (leagueLoading || !league) return;
@@ -64,12 +93,22 @@ export function FunFacts() {
         setStreaks(computeStreaks(weeks, matchupsByWeek));
         const legend = computeWaiverLegend(weeks, matchupsByWeek, transactionsByWeek);
         setWaiverLegend(legend);
+        setWaiverActivity(computeWaiverActivity(weeks, transactionsByWeek));
+        const tradeResults = computeTrades(weeks, matchupsByWeek, transactionsByWeek);
+        setTrades(tradeResults);
 
         const missingIds = new Set<string>();
         const topId = computed.topPlayerPerformance?.playerId;
         if (topId && !players[topId]) missingIds.add(topId);
-        for (const pickup of legend.slice(0, 3)) {
+        for (const pickup of legend.slice(0, 5)) {
           if (!players[pickup.playerId]) missingIds.add(pickup.playerId);
+        }
+        for (const trade of tradeResults) {
+          for (const side of trade.sides) {
+            for (const id of [...side.playersReceived, ...side.playersGaveUp]) {
+              if (!players[id]) missingIds.add(id);
+            }
+          }
         }
         if (missingIds.size > 0) {
           const resolved = await getPlayersFor(Array.from(missingIds));
@@ -355,7 +394,7 @@ export function FunFacts() {
                     <span className="fun-fact-title">Weitere gute Pickups</span>
                   </div>
                   <ul className="waiver-list">
-                    {waiverLegend.slice(1, 4).map((p) => {
+                    {waiverLegend.slice(1, 6).map((p) => {
                       const player = players[p.playerId] ?? extraPlayers[p.playerId];
                       return (
                         <li key={`${p.playerId}-${p.rosterId}-${p.addWeek}`} className="waiver-list-row">
@@ -373,8 +412,80 @@ export function FunFacts() {
                   </ul>
                 </div>
               )}
+
+              {waiverActivity.length > 0 && (
+                <FunFactCard emoji="🔄" title="Fleißigste Waiver-Hand">
+                  <div className="fun-fact-headline">
+                    <TeamPill team={teamByRosterId.get(waiverActivity[0].rosterId)} />
+                    <span className="fun-fact-points">{waiverActivity[0].count}×</span>
+                  </div>
+                  <div className="fun-fact-sub">Waiver-/Free-Agent-Moves in dieser Saison – mehr als alle anderen</div>
+                </FunFactCard>
+              )}
             </div>
           )}
+        </>
+      )}
+
+      {!loading && !error && weeks.length > 0 && trades.length > 0 && (
+        <>
+          <h2>Trades</h2>
+          <div className="fun-fact-grid">
+            {bestTradeSide && (
+              <FunFactCard emoji="🤝" title="Bester Trade">
+                <div className="fun-fact-headline">
+                  <TeamPill team={teamByRosterId.get(bestTradeSide.side.rosterId)} />
+                  <span className="fun-fact-points">{bestTradeSide.side.pointsSinceTrade.toFixed(2)} Pkt.</span>
+                </div>
+                <div className="fun-fact-sub">
+                  bekam {bestTradeSide.side.playersReceived.map(playerName).join(' + ')} seit Woche{' '}
+                  {bestTradeSide.trade.week} im Tausch gegen {bestTradeSide.side.playersGaveUp.map(playerName).join(' + ') || '–'}
+                </div>
+              </FunFactCard>
+            )}
+
+            {worstTradeSide && worstTradeSide.side !== bestTradeSide?.side && (
+              <FunFactCard emoji="🤦" title="Schlechtester Trade">
+                <div className="fun-fact-headline">
+                  <TeamPill team={teamByRosterId.get(worstTradeSide.side.rosterId)} />
+                  <span className="fun-fact-points">{worstTradeSide.side.pointsSinceTrade.toFixed(2)} Pkt.</span>
+                </div>
+                <div className="fun-fact-sub">
+                  bekam {worstTradeSide.side.playersReceived.map(playerName).join(' + ')} seit Woche{' '}
+                  {worstTradeSide.trade.week} im Tausch gegen{' '}
+                  {worstTradeSide.side.playersGaveUp.map(playerName).join(' + ') || '–'}
+                </div>
+              </FunFactCard>
+            )}
+          </div>
+
+          <h2>Trade-Historie</h2>
+          <div className="trade-list">
+            {trades.map((trade) => {
+              const maxPoints = Math.max(...trade.sides.map((s) => s.pointsSinceTrade));
+              return (
+                <div className="trade-card" key={trade.transactionId}>
+                  <div className="trade-card-week">Woche {trade.week}</div>
+                  <div className="trade-card-sides">
+                    {trade.sides.map((side, i) => (
+                      <Fragment key={side.rosterId}>
+                        {i > 0 && <div className="trade-arrow">⇄</div>}
+                        <div
+                          className={`trade-side${side.pointsSinceTrade === maxPoints ? ' trade-side-winner' : ''}`}
+                        >
+                          <TeamPill team={teamByRosterId.get(side.rosterId)} />
+                          <div className="trade-side-players">
+                            bekommt {side.playersReceived.map(playerName).join(' + ')}
+                          </div>
+                          <div className="fun-fact-points">{side.pointsSinceTrade.toFixed(2)} Pkt. seither</div>
+                        </div>
+                      </Fragment>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </>
       )}
     </div>

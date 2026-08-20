@@ -39,3 +39,30 @@ export function computeWaiverLegend(
 
   return pickups.filter((p) => p.totalPoints > 0).sort((a, b) => b.totalPoints - a.totalPoints);
 }
+
+export interface WaiverActivity {
+  rosterId: number;
+  count: number;
+}
+
+/** Zählt abgeschlossene Waiver-/Free-Agent-Moves je Team – wer schraubt am meisten am Roster? */
+export function computeWaiverActivity(
+  weeks: number[],
+  transactionsByWeek: Map<number, SleeperTransaction[]>,
+): WaiverActivity[] {
+  const counts = new Map<number, number>();
+
+  for (const week of weeks) {
+    const txns = transactionsByWeek.get(week) ?? [];
+    for (const t of txns) {
+      if (t.status !== 'complete' || (t.type !== 'waiver' && t.type !== 'free_agent')) continue;
+      for (const rosterId of t.roster_ids) {
+        counts.set(rosterId, (counts.get(rosterId) ?? 0) + 1);
+      }
+    }
+  }
+
+  return Array.from(counts.entries())
+    .map(([rosterId, count]) => ({ rosterId, count }))
+    .sort((a, b) => b.count - a.count);
+}
