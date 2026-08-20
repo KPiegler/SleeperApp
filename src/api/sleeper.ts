@@ -1,4 +1,5 @@
 import type {
+  BracketMatch,
   DraftPick,
   NflState,
   SleeperLeague,
@@ -29,6 +30,7 @@ export const sleeper = {
   getTransactions: (leagueId: string, week: number) =>
     getJSON<SleeperTransaction[]>(`${BASE}/league/${leagueId}/transactions/${week}`),
   getDraftPicks: (draftId: string) => getJSON<DraftPick[]>(`${BASE}/draft/${draftId}/picks`),
+  getWinnersBracket: (leagueId: string) => getJSON<BracketMatch[]>(`${BASE}/league/${leagueId}/winners_bracket`),
   getNflState: () => getJSON<NflState>(`${BASE}/state/nfl`),
   getWeekStats: (season: string, week: number) =>
     getJSON<WeekStats>(`${BASE}/stats/nfl/regular/${season}/${week}`),

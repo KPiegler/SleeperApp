@@ -571,6 +571,21 @@ h2 {
   font-style: italic;
 }
 
+.bracket-seed-row-winner {
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.bracket-seed-row-winner .bracket-team-name {
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.bracket-winner-icon {
+  margin-left: auto;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
 .bracket-placements {
   display: flex;
   gap: 1.5rem;
@@ -617,6 +632,11 @@ h2 {
   padding: 0.55rem 0.9rem;
   font-weight: 600;
   font-size: 0.9rem;
+}
+
+.week-select option {
+  background: var(--surface);
+  color: var(--text);
 }
 
 .matchup-grid {

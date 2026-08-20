@@ -92,6 +92,18 @@ export interface SleeperTransaction {
   drops: Record<string, number> | null;
 }
 
+export interface BracketMatch {
+  r: number;
+  m: number;
+  t1: number | null;
+  t2: number | null;
+  w: number | null;
+  l: number | null;
+  t1_from?: { w?: number; l?: number } | null;
+  t2_from?: { w?: number; l?: number } | null;
+  p?: number | null;
+}
+
 export interface DraftPick {
   pick_no: number;
   round: number;

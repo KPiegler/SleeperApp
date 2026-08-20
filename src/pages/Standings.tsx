@@ -1,8 +1,10 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLeagueData } from '../context/LeagueDataContext';
+import { sleeper } from '../api/sleeper';
 import { initials } from '../lib/avatar';
 import { PlayoffBracket } from '../components/PlayoffBracket';
-import type { Team } from '../api/types';
+import type { BracketMatch, Team } from '../api/types';
 
 function TeamRow({ team }: { team: Team }) {
   return (
@@ -22,6 +24,30 @@ function TeamRow({ team }: { team: Team }) {
 
 export function Standings() {
   const { teams, nflState, league } = useLeagueData();
+  const teamByRosterId = useMemo(() => new Map(teams.map((t) => [t.rosterId, t])), [teams]);
+
+  const [bracketResults, setBracketResults] = useState<BracketMatch[]>([]);
+
+  const isComplete = league?.status === 'complete';
+
+  useEffect(() => {
+    if (!league || !isComplete) {
+      setBracketResults([]);
+      return;
+    }
+    let cancelled = false;
+    sleeper
+      .getWinnersBracket(league.league_id)
+      .then((data) => {
+        if (!cancelled) setBracketResults(data);
+      })
+      .catch(() => {
+        if (!cancelled) setBracketResults([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [league, isComplete]);
 
   const sorted = [...teams].sort((a, b) => {
     if (b.wins !== a.wins) return b.wins - a.wins;
@@ -113,12 +139,23 @@ export function Standings() {
         </div>
       </div>
 
-      <h2>Playoff-Bracket (Projektion)</h2>
-      <p className="muted playoff-picture-note">
-        Format der Liga: Plätze 1 &amp; 2 erhalten ein Freilos in Runde 1. So würde das Bracket auf Basis der
-        aktuellen Rangliste starten – die Runden ab dem Viertelfinale hängen vom tatsächlichen Spielausgang ab.
-      </p>
-      <PlayoffBracket seeds={playoffTeams} />
+      {bracketResults.length > 0 ? (
+        <>
+          <h2>Playoff-Bracket (Endergebnis)</h2>
+          <p className="muted playoff-picture-note">
+            So ist das Playoff-Bracket tatsächlich ausgegangen – 🏆 markiert die jeweilige Sieger:in der Runde.
+          </p>
+        </>
+      ) : (
+        <>
+          <h2>Playoff-Bracket (Projektion)</h2>
+          <p className="muted playoff-picture-note">
+            Format der Liga: Plätze 1 &amp; 2 erhalten ein Freilos in Runde 1. So würde das Bracket auf Basis der
+            aktuellen Rangliste starten – die Runden ab dem Viertelfinale hängen vom tatsächlichen Spielausgang ab.
+          </p>
+        </>
+      )}
+      <PlayoffBracket seeds={playoffTeams} results={bracketResults} teamByRosterId={teamByRosterId} />
     </div>
   );
 }
