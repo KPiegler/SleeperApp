@@ -14,6 +14,11 @@ import type {
 
 const LEAGUE_ID = import.meta.env.VITE_SLEEPER_LEAGUE_ID as string | undefined;
 
+export interface SeasonOption {
+  leagueId: string;
+  season: string;
+}
+
 interface LeagueDataValue {
   loading: boolean;
   error: string | null;
@@ -24,6 +29,10 @@ interface LeagueDataValue {
   teams: Team[];
   players: Record<string, PlayerLite>;
   nflState: NflState | null;
+  seasons: SeasonOption[];
+  selectedLeagueId: string | null;
+  isCurrentSeason: boolean;
+  selectSeason: (leagueId: string) => void;
   reload: () => void;
 }
 
@@ -60,11 +69,43 @@ export function LeagueDataProvider({ children }: { children: ReactNode }) {
   const [players, setPlayers] = useState<Record<string, PlayerLite>>({});
   const [nflState, setNflState] = useState<NflState | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [seasons, setSeasons] = useState<SeasonOption[]>([]);
+  const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(LEAGUE_ID ?? null);
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
+  const selectSeason = useCallback((leagueId: string) => setSelectedLeagueId(leagueId), []);
+
+  // Vergangene Saisons über die previous_league_id-Kette ermitteln, ausgehend von der aktuellen Liga.
+  useEffect(() => {
+    if (!LEAGUE_ID) return;
+    let cancelled = false;
+
+    (async () => {
+      const chain: SeasonOption[] = [];
+      const seen = new Set<string>();
+      let nextId: string | null = LEAGUE_ID;
+
+      while (nextId && !seen.has(nextId)) {
+        seen.add(nextId);
+        try {
+          const data = await sleeper.getLeague(nextId);
+          chain.push({ leagueId: data.league_id, season: data.season });
+          nextId = data.previous_league_id;
+        } catch {
+          break;
+        }
+      }
+
+      if (!cancelled) setSeasons(chain);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
-    if (!LEAGUE_ID) {
+    if (!selectedLeagueId) {
       setError('Keine VITE_SLEEPER_LEAGUE_ID in der .env konfiguriert.');
       setLoading(false);
       return;
@@ -77,9 +118,9 @@ export function LeagueDataProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         const [leagueData, usersData, rostersData, stateData] = await Promise.all([
-          sleeper.getLeague(LEAGUE_ID),
-          sleeper.getUsers(LEAGUE_ID),
-          sleeper.getRosters(LEAGUE_ID),
+          sleeper.getLeague(selectedLeagueId),
+          sleeper.getUsers(selectedLeagueId),
+          sleeper.getRosters(selectedLeagueId),
           sleeper.getNflState(),
         ]);
 
@@ -104,7 +145,7 @@ export function LeagueDataProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [selectedLeagueId, reloadKey]);
 
   const usersById = useMemo(() => new Map(users.map((u) => [u.user_id, u])), [users]);
   const teams = useMemo(() => buildTeams(rosters, usersById), [rosters, usersById]);
@@ -119,6 +160,10 @@ export function LeagueDataProvider({ children }: { children: ReactNode }) {
     teams,
     players,
     nflState,
+    seasons,
+    selectedLeagueId,
+    isCurrentSeason: selectedLeagueId === LEAGUE_ID,
+    selectSeason,
     reload,
   };
 

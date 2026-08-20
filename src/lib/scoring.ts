@@ -16,12 +16,16 @@ export function computeFantasyPoints(
 
 /** Wochen der regulären Saison, die bereits gespielt wurden. */
 export function completedRegularWeeks(state: NflState | null, league: SleeperLeague | null): number[] {
-  if (!state || !league) return [];
+  if (!league) return [];
+  const lastRegularWeek = Math.max(0, (league.settings?.playoff_week_start ?? 15) - 1);
+
+  // Für vergangene Saisons (nicht die aktuell laufende) ist die reguläre Saison immer komplett durch.
+  if (!state || state.season !== league.season) {
+    return Array.from({ length: lastRegularWeek }, (_, i) => i + 1);
+  }
+
   if (state.season_type === 'pre' || state.season_type === 'off') return [];
-  const lastWeek =
-    state.season_type === 'regular'
-      ? Math.max(0, state.week - 1)
-      : (league.settings?.playoff_week_start ?? 15) - 1;
+  const lastWeek = state.season_type === 'regular' ? Math.max(0, state.week - 1) : lastRegularWeek;
   return Array.from({ length: lastWeek }, (_, i) => i + 1);
 }
 

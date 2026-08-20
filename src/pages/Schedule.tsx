@@ -7,8 +7,12 @@ import { maxLeagueWeek, weekLabel } from '../lib/weeks';
 import { LoadingState, ErrorState } from '../components/LoadingError';
 import type { SleeperMatchup, Team } from '../api/types';
 
-function defaultWeek(nflState: ReturnType<typeof useLeagueData>['nflState'], maxWeek: number): number {
-  if (!nflState) return 1;
+function defaultWeek(
+  nflState: ReturnType<typeof useLeagueData>['nflState'],
+  league: ReturnType<typeof useLeagueData>['league'],
+  maxWeek: number,
+): number {
+  if (!nflState || !league || nflState.season !== league.season) return 1;
   if (nflState.season_type === 'regular' || nflState.season_type === 'post') {
     return Math.min(Math.max(nflState.week, 1), maxWeek);
   }
@@ -40,10 +44,15 @@ export function Schedule() {
   const [matchLoading, setMatchLoading] = useState(true);
   const [matchError, setMatchError] = useState<string | null>(null);
 
+  // Beim Wechsel der Saison die gewählte Woche zurücksetzen, damit sie neu bestimmt wird.
+  useEffect(() => {
+    setWeek(null);
+  }, [league?.league_id]);
+
   useEffect(() => {
     if (leagueLoading || week !== null) return;
-    setWeek(defaultWeek(nflState, maxWeek));
-  }, [leagueLoading, nflState, maxWeek, week]);
+    setWeek(defaultWeek(nflState, league, maxWeek));
+  }, [leagueLoading, nflState, league, maxWeek, week]);
 
   useEffect(() => {
     if (!league || week === null) return;

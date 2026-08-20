@@ -1,5 +1,6 @@
 export interface SleeperLeague {
   league_id: string;
+  previous_league_id: string | null;
   name: string;
   season: string;
   status: string;

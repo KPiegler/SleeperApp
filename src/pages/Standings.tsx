@@ -28,7 +28,9 @@ export function Standings() {
     return b.fpts - a.fpts;
   });
 
-  const seasonNotStarted = nflState?.season_type === 'pre' || nflState?.season_type === 'off';
+  const seasonNotStarted =
+    league?.season === nflState?.season &&
+    (nflState?.season_type === 'pre' || nflState?.season_type === 'off');
   const playoffSpots = league?.settings?.playoff_teams ?? 6;
   const playoffTeams = sorted.slice(0, playoffSpots);
   const toiletBowlTeams = sorted.slice(playoffSpots);

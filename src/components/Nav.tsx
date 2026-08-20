@@ -4,7 +4,7 @@ import { useLeagueData } from '../context/LeagueDataContext';
 import { leagueAvatarUrl, initials } from '../lib/avatar';
 
 export function Nav() {
-  const { league } = useLeagueData();
+  const { league, seasons, selectedLeagueId, selectSeason } = useLeagueData();
   const avatar = leagueAvatarUrl(league);
   const [open, setOpen] = useState(false);
 
@@ -19,7 +19,22 @@ export function Nav() {
           )}
           <div>
             <div className="nav-title">{league?.name ?? 'Sleeper Liga'}</div>
-            <div className="nav-subtitle">Saison {league?.season ?? ''}</div>
+            {seasons.length > 1 ? (
+              <select
+                className="nav-season-select"
+                value={selectedLeagueId ?? ''}
+                onChange={(e) => selectSeason(e.target.value)}
+                aria-label="Saison auswählen"
+              >
+                {seasons.map((s) => (
+                  <option key={s.leagueId} value={s.leagueId}>
+                    Saison {s.season}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="nav-subtitle">Saison {league?.season ?? ''}</div>
+            )}
           </div>
         </div>
         <button
