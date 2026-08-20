@@ -4,7 +4,10 @@ import { useLeagueData } from '../context/LeagueDataContext';
 import { sleeper } from '../api/sleeper';
 import { initials } from '../lib/avatar';
 import { maxLeagueWeek, weekLabel } from '../lib/weeks';
+import { injuryCounts } from '../lib/seasonAwards';
 import { LoadingState, ErrorState } from '../components/LoadingError';
+import { StatCard } from '../components/StatCard';
+import { TeamPill } from '../components/TeamPill';
 import type { SleeperMatchup, Team } from '../api/types';
 
 const LIVE_POLL_INTERVAL_MS = 30_000;
@@ -39,8 +42,14 @@ function TeamBlock({ team, points, played, won }: { team: Team; points: number; 
 }
 
 export function Schedule() {
-  const { teams, league, nflState, loading: leagueLoading, error: leagueError } = useLeagueData();
+  const { teams, league, nflState, players, loading: leagueLoading, error: leagueError } = useLeagueData();
   const maxWeek = useMemo(() => maxLeagueWeek(league), [league]);
+  const injuries = useMemo(() => injuryCounts(teams, players), [teams, players]);
+  const topInjuries = injuries[0] ?? null;
+  const playerName = (id: string) => {
+    const p = players[id];
+    return p ? `${p.first_name} ${p.last_name}` : id;
+  };
   const [week, setWeek] = useState<number | null>(null);
   const [matchups, setMatchups] = useState<SleeperMatchup[]>([]);
   const [matchLoading, setMatchLoading] = useState(true);
@@ -197,6 +206,29 @@ export function Schedule() {
             })}
           </div>
         </>
+      )}
+
+      <h2>
+        Kader-Status <span className="fun-fact-placeholder-tag">Momentaufnahme</span>
+      </h2>
+      <p className="muted playoff-picture-note">
+        Sleeper stellt Verletzungs-Status nicht rückwirkend pro Woche bereit – hier siehst du daher immer den
+        aktuellen Stand, nicht die Situation der oben gewählten Woche.
+      </p>
+      {topInjuries ? (
+        <div className="fun-fact-grid">
+          <StatCard emoji="🩺" title="Krankenpfleger:in">
+            <div className="fun-fact-headline">
+              <TeamPill team={teamByRosterId.get(topInjuries.rosterId)} />
+              <span className="fun-fact-points">{topInjuries.playerIds.length}×</span>
+            </div>
+            <div className="fun-fact-sub">
+              aktuell verletzt/angeschlagen: {topInjuries.playerIds.map(playerName).join(', ')}
+            </div>
+          </StatCard>
+        </div>
+      ) : (
+        <p className="muted">Aktuell ist im gesamten Ligakader niemand als verletzt/angeschlagen markiert.</p>
       )}
     </div>
   );

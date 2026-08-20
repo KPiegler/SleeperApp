@@ -1,4 +1,4 @@
-import type { DraftPick, SleeperMatchup, Team } from '../api/types';
+import type { DraftPick, PlayerLite, SleeperMatchup, Team } from '../api/types';
 
 export function mvpManager(teams: Team[]): Team | null {
   if (teams.length === 0) return null;
@@ -67,6 +67,27 @@ export function heartbreakCounts(
   return Array.from(counts.entries())
     .map(([rosterId, total]) => ({ rosterId, total }))
     .sort((a, b) => b.total - a.total);
+}
+
+export interface InjuryCount {
+  rosterId: number;
+  playerIds: string[];
+}
+
+/**
+ * Zählt, wie viele Spieler im aktuellen Kader eines Teams gerade als verletzt/angeschlagen
+ * geführt werden (Questionable/Doubtful/Out/IR/PUP etc.). Basiert auf dem aktuellen
+ * Verletzungs-Status von Sleeper – eine Momentaufnahme, keine Saison-Historie, da Sleeper
+ * frühere Wochen-Stände nicht rückwirkend bereitstellt.
+ */
+export function injuryCounts(teams: Team[], players: Record<string, PlayerLite>): InjuryCount[] {
+  return teams
+    .map((team) => ({
+      rosterId: team.rosterId,
+      playerIds: team.players.filter((id) => !!players[id]?.injury_status),
+    }))
+    .filter((entry) => entry.playerIds.length > 0)
+    .sort((a, b) => b.playerIds.length - a.playerIds.length);
 }
 
 export interface DraftPerformance {
