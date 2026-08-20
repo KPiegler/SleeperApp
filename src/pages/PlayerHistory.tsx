@@ -2,11 +2,38 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLeagueData } from '../context/LeagueDataContext';
 import { sleeper } from '../api/sleeper';
 import { getPlayersFor } from '../api/playersCache';
-import { completedRegularWeeks } from '../lib/scoring';
+import { maxLeagueWeek } from '../lib/weeks';
 import { PositionBadge } from '../components/PositionBadge';
 import { TeamPill } from '../components/TeamPill';
 import { LoadingState, ErrorState } from '../components/LoadingError';
-import type { PlayerLite, SleeperTransaction } from '../api/types';
+import type { NflState, PlayerLite, SleeperLeague, SleeperTransaction } from '../api/types';
+
+/**
+ * Wochen, für die Transaktionen abgerufen werden sollen. Anders als bei den Punkte-Stats zählt
+ * hier auch die Preseason: Sleeper sammelt alle Vorsaison-Moves (z. B. Verletzungs-Waiver) bereits
+ * unter Woche 1, bevor die reguläre Saison überhaupt begonnen hat.
+ */
+function transactionWeeks(nflState: NflState | null, league: SleeperLeague | null): number[] {
+  if (!league) return [];
+  const maxWeek = maxLeagueWeek(league);
+
+  if (!nflState || nflState.season !== league.season) {
+    return Array.from({ length: maxWeek }, (_, i) => i + 1);
+  }
+  if (nflState.season_type === 'pre' || nflState.season_type === 'off') {
+    return [1];
+  }
+  const upTo = Math.max(1, Math.min(nflState.week, maxWeek));
+  return Array.from({ length: upTo }, (_, i) => i + 1);
+}
+
+function isPreseason(nflState: NflState | null, league: SleeperLeague | null): boolean {
+  return (
+    !!league &&
+    league.season === nflState?.season &&
+    (nflState?.season_type === 'pre' || nflState?.season_type === 'off')
+  );
+}
 
 type TypeFilter = 'all' | 'trade' | 'waiver' | 'free_agent';
 
@@ -39,7 +66,8 @@ interface Txn extends SleeperTransaction {
 export function PlayerHistory() {
   const { league, teams, players, nflState, loading: leagueLoading, error: leagueError } = useLeagueData();
   const teamByRosterId = useMemo(() => new Map(teams.map((t) => [t.rosterId, t])), [teams]);
-  const weeks = useMemo(() => completedRegularWeeks(nflState, league), [nflState, league]);
+  const weeks = useMemo(() => transactionWeeks(nflState, league), [nflState, league]);
+  const preseason = isPreseason(nflState, league);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -116,6 +144,13 @@ export function PlayerHistory() {
         Alle Zu- und Abgänge nach dem Draft – Trades, Waiver-Claims und Free-Agent-Moves in chronologischer
         Reihenfolge.
       </p>
+
+      {preseason && (
+        <div className="banner">
+          Die reguläre Saison hat noch nicht begonnen – gezeigt werden bereits alle Preseason-Moves (z. B.
+          Verletzungs-Waiver).
+        </div>
+      )}
 
       {weeks.length === 0 && (
         <div className="banner">
@@ -197,7 +232,7 @@ export function PlayerHistory() {
                           month: '2-digit',
                           year: 'numeric',
                         })}{' '}
-                        · Woche {t.week}
+                        · {preseason ? 'Preseason' : `Woche ${t.week}`}
                       </span>
                     </div>
                     <div className="trade-card-sides">
