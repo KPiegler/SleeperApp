@@ -84,9 +84,10 @@ export interface SleeperMatchup {
 
 export interface SleeperTransaction {
   transaction_id: string;
-  type: 'trade' | 'waiver' | 'free_agent';
+  type: 'trade' | 'waiver' | 'free_agent' | 'commissioner' | (string & {});
   status: string;
   leg: number;
+  created: number;
   roster_ids: number[];
   adds: Record<string, number> | null;
   drops: Record<string, number> | null;

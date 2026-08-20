@@ -8,6 +8,7 @@ import { TopPlayers } from './pages/TopPlayers';
 import { TeamPage } from './pages/TeamPage';
 import { Schedule } from './pages/Schedule';
 import { FunFacts } from './pages/FunFacts';
+import { PlayerHistory } from './pages/PlayerHistory';
 import { Draft } from './pages/Draft';
 import { Awards } from './pages/Awards';
 
@@ -27,6 +28,7 @@ function AppShell() {
             <Route path="/teilnehmer" element={<Participants />} />
             <Route path="/top-spieler" element={<TopPlayers />} />
             <Route path="/fun-facts" element={<FunFacts />} />
+            <Route path="/spieler-historie" element={<PlayerHistory />} />
             <Route path="/draft" element={<Draft />} />
             <Route path="/awards" element={<Awards />} />
             <Route path="/team/:rosterId" element={<TeamPage />} />

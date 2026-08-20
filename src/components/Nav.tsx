@@ -63,6 +63,9 @@ export function Nav() {
         <NavLink to="/fun-facts" className={({ isActive }) => (isActive ? 'active' : '')}>
           Fun Facts
         </NavLink>
+        <NavLink to="/spieler-historie" className={({ isActive }) => (isActive ? 'active' : '')}>
+          Spieler-Historie
+        </NavLink>
         <NavLink to="/draft" className={({ isActive }) => (isActive ? 'active' : '')}>
           Draft
         </NavLink>
