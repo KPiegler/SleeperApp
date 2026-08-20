@@ -7,6 +7,8 @@ import { maxLeagueWeek, weekLabel } from '../lib/weeks';
 import { LoadingState, ErrorState } from '../components/LoadingError';
 import type { SleeperMatchup, Team } from '../api/types';
 
+const LIVE_POLL_INTERVAL_MS = 30_000;
+
 function defaultWeek(
   nflState: ReturnType<typeof useLeagueData>['nflState'],
   league: ReturnType<typeof useLeagueData>['league'],
@@ -43,6 +45,12 @@ export function Schedule() {
   const [matchups, setMatchups] = useState<SleeperMatchup[]>([]);
   const [matchLoading, setMatchLoading] = useState(true);
   const [matchError, setMatchError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const isLiveWeek =
+    league?.season === nflState?.season &&
+    (nflState?.season_type === 'regular' || nflState?.season_type === 'post') &&
+    nflState?.week === week;
 
   // Beim Wechsel der Saison die gewählte Woche zurücksetzen, damit sie neu bestimmt wird.
   useEffect(() => {
@@ -63,7 +71,10 @@ export function Schedule() {
     sleeper
       .getMatchups(league.league_id, week)
       .then((data) => {
-        if (!cancelled) setMatchups(data);
+        if (!cancelled) {
+          setMatchups(data);
+          setLastUpdated(new Date());
+        }
       })
       .catch((e) => {
         if (!cancelled) setMatchError(e instanceof Error ? e.message : 'Fehler beim Laden des Spielplans.');
@@ -76,6 +87,26 @@ export function Schedule() {
       cancelled = true;
     };
   }, [league, week]);
+
+  // Während die gewählte Woche live läuft, Matchups im Hintergrund periodisch neu laden.
+  useEffect(() => {
+    if (!league || week === null || !isLiveWeek) return;
+
+    const id = setInterval(() => {
+      if (document.hidden) return;
+      sleeper
+        .getMatchups(league.league_id, week)
+        .then((data) => {
+          setMatchups(data);
+          setLastUpdated(new Date());
+        })
+        .catch(() => {
+          // Stiller Fehlschlag beim Live-Poll – der nächste Versuch folgt automatisch.
+        });
+    }, LIVE_POLL_INTERVAL_MS);
+
+    return () => clearInterval(id);
+  }, [league, week, isLiveWeek]);
 
   const teamByRosterId = useMemo(() => new Map(teams.map((t) => [t.rosterId, t])), [teams]);
 
@@ -122,6 +153,16 @@ export function Schedule() {
         >
           Nächste →
         </button>
+        {isLiveWeek && (
+          <span className="live-badge">
+            <span className="live-badge-dot" /> Live
+          </span>
+        )}
+        {isLiveWeek && lastUpdated && (
+          <span className="muted live-updated">
+            Aktualisiert um {lastUpdated.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </span>
+        )}
       </div>
 
       {matchLoading && <LoadingState label="Lade Matchups…" />}
