@@ -5,7 +5,7 @@ import { sleeper } from '../api/sleeper';
 import { completedRegularWeeks, sumFantasyPointsByPlayer } from '../lib/scoring';
 import { PositionBadge } from '../components/PositionBadge';
 import { LoadingState, ErrorState } from '../components/LoadingError';
-import type { WeekStats } from '../api/types';
+import type { DraftPick, WeekStats } from '../api/types';
 
 const POSITIONS = ['ALLE', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
 const PAGE_SIZE = 25;
@@ -19,10 +19,12 @@ export function TopPlayers() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [pointsByPlayer, setPointsByPlayer] = useState<Record<string, number>>({});
+  const [draftTeamByPlayer, setDraftTeamByPlayer] = useState<Record<string, string>>({});
   const [position, setPosition] = useState('ALLE');
   const [showAll, setShowAll] = useState(false);
 
   const weeks = useMemo(() => completedRegularWeeks(nflState, league), [nflState, league]);
+  const isPastSeason = league?.status === 'complete';
 
   useEffect(() => {
     if (leagueLoading || !league) return;
@@ -36,10 +38,19 @@ export function TopPlayers() {
     setStatsLoading(true);
     setStatsError(null);
 
-    Promise.all(weeks.map((w) => sleeper.getWeekStats(league.season, w)))
-      .then((weekStatsList: WeekStats[]) => {
+    Promise.all([
+      Promise.all(weeks.map((w) => sleeper.getWeekStats(league.season, w))),
+      league.draft_id ? sleeper.getDraftPicks(league.draft_id) : Promise.resolve<DraftPick[]>([]),
+    ])
+      .then(([weekStatsList, draftPicks]: [WeekStats[], DraftPick[]]) => {
         if (cancelled) return;
         setPointsByPlayer(sumFantasyPointsByPlayer(weekStatsList, league.scoring_settings));
+
+        const draftTeams: Record<string, string> = {};
+        for (const pick of draftPicks) {
+          if (pick.metadata?.team) draftTeams[pick.player_id] = pick.metadata.team;
+        }
+        setDraftTeamByPlayer(draftTeams);
       })
       .catch((e) => {
         if (!cancelled) setStatsError(e instanceof Error ? e.message : 'Fehler beim Laden der Statistiken.');
@@ -63,10 +74,12 @@ export function TopPlayers() {
 
     const list = Array.from(playerToTeam.entries()).map(([id, team]) => {
       const player = players[id];
+      const nflTeam = (isPastSeason ? draftTeamByPlayer[id] : undefined) ?? player?.team ?? null;
       return {
         id,
         player,
         team,
+        nflTeam,
         points: pointsByPlayer[id] ?? 0,
         searchRank: player?.search_rank ?? Number.MAX_SAFE_INTEGER,
       };
@@ -74,7 +87,7 @@ export function TopPlayers() {
 
     list.sort((a, b) => (usePoints ? b.points - a.points : a.searchRank - b.searchRank));
     return list;
-  }, [teams, players, pointsByPlayer, weeks.length]);
+  }, [teams, players, pointsByPlayer, weeks.length, isPastSeason, draftTeamByPlayer]);
 
   const filtered = useMemo(() => {
     if (position === 'ALLE') return rows;
@@ -90,6 +103,12 @@ export function TopPlayers() {
   return (
     <div className="page">
       <h1>Top Spieler in unserer Liga</h1>
+      {isPastSeason && (
+        <p className="muted playoff-picture-note">
+          NFL-Team zeigt den Stand beim Draft dieser Saison, nicht das aktuelle Team – Sleeper stellt keine
+          rückwirkende Wochen-Historie bereit, unterjährige Trades werden hier also nicht erfasst.
+        </p>
+      )}
       {!usePoints && (
         <div className="banner">
           Es wurde noch keine Woche der regulären Saison gespielt – Sortierung erfolgt daher nach
@@ -136,7 +155,7 @@ export function TopPlayers() {
                       {row.player ? playerFullName(row.player.first_name, row.player.last_name) : row.id}
                     </div>
                   </td>
-                  <td>{row.player?.team ?? '—'}</td>
+                  <td>{row.nflTeam ?? '—'}</td>
                   <td>
                     <Link to={`/team/${row.team.rosterId}`}>{row.team.teamName}</Link>
                   </td>
