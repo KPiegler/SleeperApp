@@ -7,8 +7,8 @@ import { computeFunFacts } from '../lib/funFacts';
 import type { FunFacts as FunFactsResult } from '../lib/funFacts';
 import { computeStreaks } from '../lib/streaks';
 import type { TeamStreak } from '../lib/streaks';
-import { computeWaiverLegend, computeWaiverActivity } from '../lib/waiverLegend';
-import type { WaiverPickup, WaiverActivity } from '../lib/waiverLegend';
+import { computeWaiverLegend, computeWaiverActivity, computeWaiverBattles } from '../lib/waiverLegend';
+import type { WaiverPickup, WaiverActivity, WaiverBattleStat } from '../lib/waiverLegend';
 import { computeTrades } from '../lib/trades';
 import type { TradeResult } from '../lib/trades';
 import { PositionBadge } from '../components/PositionBadge';
@@ -33,6 +33,7 @@ export function FunFacts() {
   const [streaks, setStreaks] = useState<TeamStreak[]>([]);
   const [waiverLegend, setWaiverLegend] = useState<WaiverPickup[]>([]);
   const [waiverActivity, setWaiverActivity] = useState<WaiverActivity[]>([]);
+  const [waiverBattles, setWaiverBattles] = useState<WaiverBattleStat[]>([]);
   const [trades, setTrades] = useState<TradeResult[]>([]);
   const [extraPlayers, setExtraPlayers] = useState<Record<string, PlayerLite>>({});
 
@@ -94,6 +95,7 @@ export function FunFacts() {
         const legend = computeWaiverLegend(weeks, matchupsByWeek, transactionsByWeek);
         setWaiverLegend(legend);
         setWaiverActivity(computeWaiverActivity(weeks, transactionsByWeek));
+        setWaiverBattles(computeWaiverBattles(weeks, transactionsByWeek));
         const tradeResults = computeTrades(weeks, matchupsByWeek, transactionsByWeek);
         setTrades(tradeResults);
 
@@ -420,6 +422,19 @@ export function FunFacts() {
                     <span className="fun-fact-points">{waiverActivity[0].count}×</span>
                   </div>
                   <div className="fun-fact-sub">Waiver-/Free-Agent-Moves in dieser Saison – mehr als alle anderen</div>
+                </FunFactCard>
+              )}
+
+              {waiverBattles.length > 0 && (
+                <FunFactCard emoji="🥊" title="Waiver-Battle-König:in">
+                  <div className="fun-fact-headline">
+                    <TeamPill team={teamByRosterId.get(waiverBattles[0].rosterId)} />
+                    <span className="fun-fact-points">{waiverBattles[0].wins}×</span>
+                  </div>
+                  <div className="fun-fact-sub">
+                    hat sich am häufigsten gegen ein anderes Team durchgesetzt, wenn beide denselben Spieler
+                    beansprucht haben
+                  </div>
                 </FunFactCard>
               )}
             </div>

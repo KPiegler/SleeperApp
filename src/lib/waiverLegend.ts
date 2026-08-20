@@ -66,3 +66,50 @@ export function computeWaiverActivity(
     .map(([rosterId, count]) => ({ rosterId, count }))
     .sort((a, b) => b.count - a.count);
 }
+
+export interface WaiverBattleStat {
+  rosterId: number;
+  wins: number;
+}
+
+/**
+ * Zählt gewonnene Waiver-Battles: Fälle, in denen mehrere Teams denselben Spieler in derselben
+ * Woche beansprucht haben (Sleeper protokolliert auch die verlorenen "failed"-Claims) und ein
+ * Team sich gegen mindestens ein anderes durchgesetzt hat.
+ */
+export function computeWaiverBattles(
+  weeks: number[],
+  transactionsByWeek: Map<number, SleeperTransaction[]>,
+): WaiverBattleStat[] {
+  const wins = new Map<number, number>();
+
+  for (const week of weeks) {
+    const txns = (transactionsByWeek.get(week) ?? []).filter((t) => t.type === 'waiver' && t.adds);
+
+    const claimsByPlayer = new Map<string, { rosterId: number; status: string }[]>();
+    for (const t of txns) {
+      for (const [playerId, rosterId] of Object.entries(t.adds!)) {
+        const list = claimsByPlayer.get(playerId) ?? [];
+        list.push({ rosterId, status: t.status });
+        claimsByPlayer.set(playerId, list);
+      }
+    }
+
+    for (const claims of claimsByPlayer.values()) {
+      const rosterIds = new Set(claims.map((c) => c.rosterId));
+      if (rosterIds.size < 2) continue;
+
+      const winnerRosterIds = new Set(claims.filter((c) => c.status === 'complete').map((c) => c.rosterId));
+      const hasLoser = claims.some((c) => c.status === 'failed' && !winnerRosterIds.has(c.rosterId));
+      if (winnerRosterIds.size === 0 || !hasLoser) continue;
+
+      for (const rosterId of winnerRosterIds) {
+        wins.set(rosterId, (wins.get(rosterId) ?? 0) + 1);
+      }
+    }
+  }
+
+  return Array.from(wins.entries())
+    .map(([rosterId, wins]) => ({ rosterId, wins }))
+    .sort((a, b) => b.wins - a.wins);
+}
