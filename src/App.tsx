@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { LeagueDataProvider, useLeagueData } from './context/LeagueDataContext';
 import { Nav } from './components/Nav';
 import { LoadingState, ErrorState } from './components/LoadingError';
@@ -15,11 +15,14 @@ import { LeagueSearch } from './pages/LeagueSearch';
 
 function AppShell() {
   const { loading, error, reload, selectedLeagueId } = useLeagueData();
+  const location = useLocation();
 
-  if (!selectedLeagueId) {
+  // /start erzwingt die Liga-Auswahl als alleinigen Einstiegspunkt, ohne Nav zum Ausweichen.
+  const forceLeaguePick = !selectedLeagueId || location.pathname === '/start';
+
+  if (forceLeaguePick) {
     return (
       <div className="app">
-        <Nav />
         <main className="main">
           <LeagueSearch />
         </main>
