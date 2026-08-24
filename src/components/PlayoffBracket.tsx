@@ -46,8 +46,26 @@ function MatchBox({ top, bottom }: { top: Slot; bottom: Slot }) {
   );
 }
 
-/** 4-Team Playoff-Bracket: Halbfinale 1 vs. 4 und 2 vs. 3, dann Finale + Spiel um Platz 3. */
-function FourTeamBracket({ seeds }: { seeds: Team[] }) {
+/** Einzelnes Spiel, wenn nur 2 Teams übrig sind (z. B. kleiner Toilet-Bowl-Rest). */
+function TwoTeamBracket({ seeds, seedOffset }: { seeds: Team[]; seedOffset: number }) {
+  const [s1, s2] = seeds;
+
+  return (
+    <div className="bracket-wrap">
+      <div className="bracket">
+        <div className="bracket-round">
+          <div className="bracket-round-title">Finale</div>
+          <div className="bracket-matches bracket-col-1-centered">
+            <MatchBox top={{ team: s1, seed: seedOffset + 1 }} bottom={{ team: s2, seed: seedOffset + 2 }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** 4-Team Bracket: Halbfinale 1 vs. 4 und 2 vs. 3, dann Finale + Spiel um Platz 3. */
+function FourTeamBracket({ seeds, seedOffset }: { seeds: Team[]; seedOffset: number }) {
   const [s1, s2, s3, s4] = seeds;
 
   return (
@@ -56,8 +74,8 @@ function FourTeamBracket({ seeds }: { seeds: Team[] }) {
         <div className="bracket-round">
           <div className="bracket-round-title">Halbfinale</div>
           <div className="bracket-matches bracket-col-2-centered">
-            <MatchBox top={{ team: s1, seed: 1 }} bottom={{ team: s4, seed: 4 }} />
-            <MatchBox top={{ team: s2, seed: 2 }} bottom={{ team: s3, seed: 3 }} />
+            <MatchBox top={{ team: s1, seed: seedOffset + 1 }} bottom={{ team: s4, seed: seedOffset + 4 }} />
+            <MatchBox top={{ team: s2, seed: seedOffset + 2 }} bottom={{ team: s3, seed: seedOffset + 3 }} />
           </div>
         </div>
 
@@ -71,7 +89,7 @@ function FourTeamBracket({ seeds }: { seeds: Team[] }) {
 
       <div className="bracket-placements">
         <div className="bracket-placement-card">
-          <div className="bracket-round-title">Spiel um Platz 3</div>
+          <div className="bracket-round-title">Spiel um Platz {seedOffset + 3}</div>
           <MatchBox top={{ label: 'Verlierer:in Halbfinale 1' }} bottom={{ label: 'Verlierer:in Halbfinale 2' }} />
         </div>
       </div>
@@ -79,9 +97,13 @@ function FourTeamBracket({ seeds }: { seeds: Team[] }) {
   );
 }
 
-/** Klassisches 6-Team Playoff-Bracket: Plätze 1+2 haben ein Freilos in Runde 1. */
-function SixTeamBracket({ seeds }: { seeds: Team[] }) {
+/** Klassisches 6-Team Bracket: Plätze 1+2 (der jeweiligen Gruppe) haben ein Freilos in Runde 1. */
+function SixTeamBracket({ seeds, seedOffset }: { seeds: Team[]; seedOffset: number }) {
   const [s1, s2, s3, s4, s5, s6] = seeds;
+  const n3 = seedOffset + 3;
+  const n4 = seedOffset + 4;
+  const n5 = seedOffset + 5;
+  const n6 = seedOffset + 6;
 
   return (
     <div className="bracket-wrap">
@@ -89,16 +111,16 @@ function SixTeamBracket({ seeds }: { seeds: Team[] }) {
         <div className="bracket-round">
           <div className="bracket-round-title">Viertelfinale</div>
           <div className="bracket-matches bracket-col-2">
-            <MatchBox top={{ team: s3, seed: 3 }} bottom={{ team: s6, seed: 6 }} />
-            <MatchBox top={{ team: s4, seed: 4 }} bottom={{ team: s5, seed: 5 }} />
+            <MatchBox top={{ team: s3, seed: n3 }} bottom={{ team: s6, seed: n6 }} />
+            <MatchBox top={{ team: s4, seed: n4 }} bottom={{ team: s5, seed: n5 }} />
           </div>
         </div>
 
         <div className="bracket-round">
           <div className="bracket-round-title">Halbfinale</div>
           <div className="bracket-matches bracket-col-2-centered">
-            <MatchBox top={{ team: s1, seed: 1 }} bottom={{ label: 'Sieger:in #4 / #5' }} />
-            <MatchBox top={{ team: s2, seed: 2 }} bottom={{ label: 'Sieger:in #3 / #6' }} />
+            <MatchBox top={{ team: s1, seed: seedOffset + 1 }} bottom={{ label: `Sieger:in #${n4} / #${n5}` }} />
+            <MatchBox top={{ team: s2, seed: seedOffset + 2 }} bottom={{ label: `Sieger:in #${n3} / #${n6}` }} />
           </div>
         </div>
 
@@ -112,12 +134,12 @@ function SixTeamBracket({ seeds }: { seeds: Team[] }) {
 
       <div className="bracket-placements">
         <div className="bracket-placement-card">
-          <div className="bracket-round-title">Spiel um Platz 3</div>
+          <div className="bracket-round-title">Spiel um Platz {n3}</div>
           <MatchBox top={{ label: 'Verlierer:in Halbfinale 1' }} bottom={{ label: 'Verlierer:in Halbfinale 2' }} />
         </div>
         <div className="bracket-placement-card">
-          <div className="bracket-round-title">Spiel um Platz 5</div>
-          <MatchBox top={{ label: 'Verlierer:in #3 / #6' }} bottom={{ label: 'Verlierer:in #4 / #5' }} />
+          <div className="bracket-round-title">Spiel um Platz {n5}</div>
+          <MatchBox top={{ label: `Verlierer:in #${n3} / #${n6}` }} bottom={{ label: `Verlierer:in #${n4} / #${n5}` }} />
         </div>
       </div>
     </div>
@@ -211,16 +233,19 @@ export function PlayoffBracket({
   seeds,
   results,
   teamByRosterId,
+  seedOffset = 0,
 }: {
   seeds: Team[];
   results?: BracketMatch[];
   teamByRosterId?: Map<number, Team>;
+  seedOffset?: number;
 }) {
   if (results && results.length > 0 && teamByRosterId) {
-    const seedByRosterId = new Map(seeds.map((t, i) => [t.rosterId, i + 1]));
+    const seedByRosterId = new Map(seeds.map((t, i) => [t.rosterId, seedOffset + i + 1]));
     return <ResultsBracket matches={results} teamByRosterId={teamByRosterId} seedByRosterId={seedByRosterId} />;
   }
-  if (seeds.length >= 6) return <SixTeamBracket seeds={seeds} />;
-  if (seeds.length === 4) return <FourTeamBracket seeds={seeds} />;
-  return <p className="muted">Für ein Bracket werden mindestens 4 Playoff-Teams benötigt.</p>;
+  if (seeds.length >= 6) return <SixTeamBracket seeds={seeds} seedOffset={seedOffset} />;
+  if (seeds.length === 4) return <FourTeamBracket seeds={seeds} seedOffset={seedOffset} />;
+  if (seeds.length === 2) return <TwoTeamBracket seeds={seeds} seedOffset={seedOffset} />;
+  return <p className="muted">Für ein Bracket werden mindestens 2 Teams benötigt.</p>;
 }

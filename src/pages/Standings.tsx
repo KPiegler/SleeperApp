@@ -27,22 +27,28 @@ export function Standings() {
   const teamByRosterId = useMemo(() => new Map(teams.map((t) => [t.rosterId, t])), [teams]);
 
   const [bracketResults, setBracketResults] = useState<BracketMatch[]>([]);
+  const [toiletBowlResults, setToiletBowlResults] = useState<BracketMatch[]>([]);
 
   const isComplete = league?.status === 'complete';
 
   useEffect(() => {
     if (!league || !isComplete) {
       setBracketResults([]);
+      setToiletBowlResults([]);
       return;
     }
     let cancelled = false;
-    sleeper
-      .getWinnersBracket(league.league_id)
-      .then((data) => {
-        if (!cancelled) setBracketResults(data);
+    Promise.all([sleeper.getWinnersBracket(league.league_id), sleeper.getLosersBracket(league.league_id)])
+      .then(([winners, losers]) => {
+        if (cancelled) return;
+        setBracketResults(winners);
+        setToiletBowlResults(losers);
       })
       .catch(() => {
-        if (!cancelled) setBracketResults([]);
+        if (!cancelled) {
+          setBracketResults([]);
+          setToiletBowlResults([]);
+        }
       });
     return () => {
       cancelled = true;
@@ -156,6 +162,33 @@ export function Standings() {
         </>
       )}
       <PlayoffBracket seeds={playoffTeams} results={bracketResults} teamByRosterId={teamByRosterId} />
+
+      {toiletBowlTeams.length >= 2 && (
+        <>
+          {toiletBowlResults.length > 0 ? (
+            <>
+              <h2>🚽 Toilet-Bowl-Bracket (Endergebnis)</h2>
+              <p className="muted playoff-picture-note">
+                So ist der Toilet Bowl tatsächlich ausgegangen – 🏆 markiert die jeweilige Sieger:in der Runde.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2>🚽 Toilet-Bowl-Bracket (Projektion)</h2>
+              <p className="muted playoff-picture-note">
+                So würde der Toilet Bowl unter den Nicht-Playoff-Teams auf Basis der aktuellen Rangliste starten –
+                die weiteren Runden hängen vom tatsächlichen Spielausgang ab.
+              </p>
+            </>
+          )}
+          <PlayoffBracket
+            seeds={toiletBowlTeams}
+            results={toiletBowlResults}
+            teamByRosterId={teamByRosterId}
+            seedOffset={playoffSpots}
+          />
+        </>
+      )}
     </div>
   );
 }

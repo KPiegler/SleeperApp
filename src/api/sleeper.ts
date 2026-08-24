@@ -34,6 +34,7 @@ export const sleeper = {
   getUserByUsername: (username: string) => getJSON<SleeperUser | null>(`${BASE}/user/${username}`),
   getUserLeagues: (userId: string, season: string) =>
     getJSON<SleeperLeague[]>(`${BASE}/user/${userId}/leagues/nfl/${season}`),
+  getLosersBracket: (leagueId: string) => getJSON<BracketMatch[]>(`${BASE}/league/${leagueId}/losers_bracket`),
   getNflState: () => getJSON<NflState>(`${BASE}/state/nfl`),
   getWeekStats: (season: string, week: number) =>
     getJSON<WeekStats>(`${BASE}/stats/nfl/regular/${season}/${week}`),
