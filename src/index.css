@@ -1097,6 +1097,11 @@ h2 {
   font-family: inherit;
 }
 
+.league-search-form .btn {
+  margin-top: 0;
+  font-size: 0.9rem;
+}
+
 .league-search-input:focus {
   outline: none;
   border-color: var(--accent);
