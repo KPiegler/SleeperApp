@@ -1077,6 +1077,46 @@ h2 {
   color: var(--muted);
 }
 
+/* League search */
+.league-search-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+}
+
+.league-search-input {
+  flex: 1;
+  min-width: 200px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.league-search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+}
+
+.league-search-card {
+  font-family: inherit;
+  cursor: pointer;
+  width: 100%;
+}
+
+.league-search-card-active {
+  border-color: var(--accent);
+}
+
+.league-search-card-active .team-name {
+  color: var(--accent);
+}
+
 /* Participants */
 .card-grid {
   display: grid;

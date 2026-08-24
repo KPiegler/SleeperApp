@@ -72,6 +72,9 @@ export function Nav() {
         <NavLink to="/awards" className={({ isActive }) => (isActive ? 'active' : '')}>
           Awards
         </NavLink>
+        <NavLink to="/liga-suche" className={({ isActive }) => (isActive ? 'active' : '')}>
+          🔍 Liga wechseln
+        </NavLink>
       </nav>
     </header>
   );

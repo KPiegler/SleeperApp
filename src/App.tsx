@@ -11,9 +11,21 @@ import { FunFacts } from './pages/FunFacts';
 import { PlayerHistory } from './pages/PlayerHistory';
 import { Draft } from './pages/Draft';
 import { Awards } from './pages/Awards';
+import { LeagueSearch } from './pages/LeagueSearch';
 
 function AppShell() {
-  const { loading, error, reload } = useLeagueData();
+  const { loading, error, reload, selectedLeagueId } = useLeagueData();
+
+  if (!selectedLeagueId) {
+    return (
+      <div className="app">
+        <Nav />
+        <main className="main">
+          <LeagueSearch />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -31,6 +43,7 @@ function AppShell() {
             <Route path="/spieler-historie" element={<PlayerHistory />} />
             <Route path="/draft" element={<Draft />} />
             <Route path="/awards" element={<Awards />} />
+            <Route path="/liga-suche" element={<LeagueSearch />} />
             <Route path="/team/:rosterId" element={<TeamPage />} />
           </Routes>
         )}

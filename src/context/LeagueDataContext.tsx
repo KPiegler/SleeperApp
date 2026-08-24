@@ -12,7 +12,24 @@ import type {
   Team,
 } from '../api/types';
 
-const LEAGUE_ID = import.meta.env.VITE_SLEEPER_LEAGUE_ID as string | undefined;
+const ENV_LEAGUE_ID = import.meta.env.VITE_SLEEPER_LEAGUE_ID as string | undefined;
+const ROOT_LEAGUE_STORAGE_KEY = 'sleeper_root_league_id';
+
+function getStoredRootLeagueId(): string | null {
+  try {
+    return localStorage.getItem(ROOT_LEAGUE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setStoredRootLeagueId(leagueId: string) {
+  try {
+    localStorage.setItem(ROOT_LEAGUE_STORAGE_KEY, leagueId);
+  } catch {
+    // localStorage nicht verfügbar - Auswahl wird einfach nicht über Sitzungen hinweg gemerkt
+  }
+}
 
 export interface SeasonOption {
   leagueId: string;
@@ -33,6 +50,7 @@ interface LeagueDataValue {
   selectedLeagueId: string | null;
   isCurrentSeason: boolean;
   selectSeason: (leagueId: string) => void;
+  chooseLeague: (leagueId: string) => void;
   reload: () => void;
 }
 
@@ -70,20 +88,31 @@ export function LeagueDataProvider({ children }: { children: ReactNode }) {
   const [nflState, setNflState] = useState<NflState | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [seasons, setSeasons] = useState<SeasonOption[]>([]);
-  const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(LEAGUE_ID ?? null);
+  const [rootLeagueId, setRootLeagueId] = useState<string | null>(
+    () => getStoredRootLeagueId() ?? ENV_LEAGUE_ID ?? null,
+  );
+  const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(rootLeagueId);
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
   const selectSeason = useCallback((leagueId: string) => setSelectedLeagueId(leagueId), []);
+  const chooseLeague = useCallback((leagueId: string) => {
+    setStoredRootLeagueId(leagueId);
+    setRootLeagueId(leagueId);
+    setSelectedLeagueId(leagueId);
+  }, []);
 
-  // Vergangene Saisons über die previous_league_id-Kette ermitteln, ausgehend von der aktuellen Liga.
+  // Vergangene Saisons über die previous_league_id-Kette ermitteln, ausgehend von der Root-Liga.
   useEffect(() => {
-    if (!LEAGUE_ID) return;
+    if (!rootLeagueId) {
+      setSeasons([]);
+      return;
+    }
     let cancelled = false;
 
     (async () => {
       const chain: SeasonOption[] = [];
       const seen = new Set<string>();
-      let nextId: string | null = LEAGUE_ID;
+      let nextId: string | null = rootLeagueId;
 
       while (nextId && !seen.has(nextId)) {
         seen.add(nextId);
@@ -102,11 +131,11 @@ export function LeagueDataProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [rootLeagueId]);
 
   useEffect(() => {
     if (!selectedLeagueId) {
-      setError('Keine VITE_SLEEPER_LEAGUE_ID in der .env konfiguriert.');
+      setError(null);
       setLoading(false);
       return;
     }
@@ -162,8 +191,9 @@ export function LeagueDataProvider({ children }: { children: ReactNode }) {
     nflState,
     seasons,
     selectedLeagueId,
-    isCurrentSeason: selectedLeagueId === LEAGUE_ID,
+    isCurrentSeason: selectedLeagueId === rootLeagueId,
     selectSeason,
+    chooseLeague,
     reload,
   };
 
