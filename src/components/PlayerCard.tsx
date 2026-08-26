@@ -23,11 +23,13 @@ export function PlayerCard({
   player,
   slot,
   extra,
+  nflTeam,
 }: {
   playerId: string;
   player: PlayerLite | undefined;
   slot?: string;
   extra?: string;
+  nflTeam?: string | null;
 }) {
   const injuryColor = player?.injury_status ? INJURY_COLORS[player.injury_status] : undefined;
 
@@ -38,7 +40,7 @@ export function PlayerCard({
       <div className="player-card-body">
         <div className="player-card-name">{playerName(player, playerId)}</div>
         <div className="player-card-meta">
-          {player?.team ?? 'FA'}
+          {(nflTeam ?? player?.team) ?? 'FA'}
           {player?.injury_status && (
             <span className="injury-tag" style={{ color: injuryColor }}>
               {' '}
