@@ -15,7 +15,15 @@ interface Txn extends SleeperTransaction {
 }
 
 export function PlayerHistory() {
-  const { league, teams, players, nflState, loading: leagueLoading, error: leagueError } = useLeagueData();
+  const {
+    league,
+    teams,
+    players,
+    nflState,
+    loading: leagueLoading,
+    error: leagueError,
+    reload,
+  } = useLeagueData();
   const teamByRosterId = useMemo(() => new Map(teams.map((t) => [t.rosterId, t])), [teams]);
   const weeks = useMemo(() => transactionWeeks(nflState, league), [nflState, league]);
   const preseason = isPreseason(nflState, league);
@@ -26,6 +34,7 @@ export function PlayerHistory() {
   const [extraPlayers, setExtraPlayers] = useState<Record<string, PlayerLite>>({});
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [teamFilter, setTeamFilter] = useState<number | 'all'>('all');
+  const [retryKey, setRetryKey] = useState(0);
 
   const allPlayers = useMemo(() => ({ ...players, ...extraPlayers }), [players, extraPlayers]);
 
@@ -75,7 +84,7 @@ export function PlayerHistory() {
     return () => {
       cancelled = true;
     };
-  }, [league, leagueLoading, weeks, players]);
+  }, [league, leagueLoading, weeks, players, retryKey]);
 
   const filtered = useMemo(() => {
     return transactions.filter((t) => {
@@ -86,7 +95,7 @@ export function PlayerHistory() {
   }, [transactions, typeFilter, teamFilter]);
 
   if (leagueLoading) return <LoadingState label="Lade Liga-Daten…" />;
-  if (leagueError) return <ErrorState message={leagueError} />;
+  if (leagueError) return <ErrorState message={leagueError} onRetry={reload} />;
 
   return (
     <div className="page">
@@ -111,7 +120,7 @@ export function PlayerHistory() {
       )}
 
       {loading && weeks.length > 0 && <LoadingState label="Lade Transaktionen…" />}
-      {error && <ErrorState message={error} />}
+      {error && <ErrorState message={error} onRetry={() => setRetryKey((k) => k + 1)} />}
 
       {!loading && !error && weeks.length > 0 && (
         <>

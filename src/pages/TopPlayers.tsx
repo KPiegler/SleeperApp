@@ -15,9 +15,18 @@ function playerFullName(first: string, last: string): string {
 }
 
 export function TopPlayers() {
-  const { league, teams, players, nflState, loading: leagueLoading, error: leagueError } = useLeagueData();
+  const {
+    league,
+    teams,
+    players,
+    nflState,
+    loading: leagueLoading,
+    error: leagueError,
+    reload,
+  } = useLeagueData();
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
   const [pointsByPlayer, setPointsByPlayer] = useState<Record<string, number>>({});
   const [draftTeamByPlayer, setDraftTeamByPlayer] = useState<Record<string, string>>({});
   const [position, setPosition] = useState('ALLE');
@@ -62,7 +71,7 @@ export function TopPlayers() {
     return () => {
       cancelled = true;
     };
-  }, [league, leagueLoading, weeks]);
+  }, [league, leagueLoading, weeks, retryKey]);
 
   const rows = useMemo(() => {
     const playerToTeam = new Map<string, (typeof teams)[number]>();
@@ -98,7 +107,7 @@ export function TopPlayers() {
   const usePoints = weeks.length > 0;
 
   if (leagueLoading) return <LoadingState label="Lade Liga-Daten…" />;
-  if (leagueError) return <ErrorState message={leagueError} />;
+  if (leagueError) return <ErrorState message={leagueError} onRetry={reload} />;
 
   return (
     <div className="page">
@@ -131,7 +140,7 @@ export function TopPlayers() {
       </div>
 
       {statsLoading && <LoadingState label="Lade Spielstatistiken…" />}
-      {statsError && <ErrorState message={statsError} />}
+      {statsError && <ErrorState message={statsError} onRetry={() => setRetryKey((k) => k + 1)} />}
 
       {!statsLoading && !statsError && (
         <div className="table-wrap">

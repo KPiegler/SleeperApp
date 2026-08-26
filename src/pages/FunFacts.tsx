@@ -25,6 +25,7 @@ export function FunFacts() {
     players,
     loading: leagueLoading,
     error: leagueError,
+    reload,
   } = useLeagueData();
 
   const [loading, setLoading] = useState(true);
@@ -36,6 +37,7 @@ export function FunFacts() {
   const [waiverBattles, setWaiverBattles] = useState<WaiverBattleStat[]>([]);
   const [trades, setTrades] = useState<TradeResult[]>([]);
   const [extraPlayers, setExtraPlayers] = useState<Record<string, PlayerLite>>({});
+  const [retryKey, setRetryKey] = useState(0);
 
   const weeks = useMemo(() => completedRegularWeeks(nflState, league), [nflState, league]);
   const teamByRosterId = useMemo(() => new Map(teams.map((t) => [t.rosterId, t])), [teams]);
@@ -127,10 +129,10 @@ export function FunFacts() {
     return () => {
       cancelled = true;
     };
-  }, [league, leagueLoading, weeks, players]);
+  }, [league, leagueLoading, weeks, players, retryKey]);
 
   if (leagueLoading) return <LoadingState label="Lade Liga-Daten…" />;
-  if (leagueError) return <ErrorState message={leagueError} />;
+  if (leagueError) return <ErrorState message={leagueError} onRetry={reload} />;
 
   return (
     <div className="page">
@@ -247,7 +249,7 @@ export function FunFacts() {
       )}
 
       {loading && weeks.length > 0 && <LoadingState label="Werte alle Wochen aus…" />}
-      {error && <ErrorState message={error} />}
+      {error && <ErrorState message={error} onRetry={() => setRetryKey((k) => k + 1)} />}
 
       {!loading && !error && facts && (
         <div className="fun-fact-grid">

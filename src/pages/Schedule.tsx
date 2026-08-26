@@ -43,7 +43,7 @@ function TeamBlock({ team, points, played, won }: { team: Team; points: number; 
 }
 
 export function Schedule() {
-  const { teams, league, nflState, players, loading: leagueLoading, error: leagueError } = useLeagueData();
+  const { teams, league, nflState, players, loading: leagueLoading, error: leagueError, reload } = useLeagueData();
   const maxWeek = useMemo(() => maxLeagueWeek(league), [league]);
   const injuries = useMemo(() => injuryCounts(teams, players), [teams, players]);
   const topInjuries = injuries[0] ?? null;
@@ -56,6 +56,7 @@ export function Schedule() {
   const [matchLoading, setMatchLoading] = useState(true);
   const [matchError, setMatchError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   const isLiveWeek =
     league?.season === nflState?.season &&
@@ -96,7 +97,7 @@ export function Schedule() {
     return () => {
       cancelled = true;
     };
-  }, [league, week]);
+  }, [league, week, retryKey]);
 
   // Während die gewählte Woche live läuft, Matchups im Hintergrund periodisch neu laden.
   useEffect(() => {
@@ -141,7 +142,7 @@ export function Schedule() {
   }, [matchups]);
 
   if (leagueLoading) return <LoadingState label="Lade Liga-Daten…" />;
-  if (leagueError) return <ErrorState message={leagueError} />;
+  if (leagueError) return <ErrorState message={leagueError} onRetry={reload} />;
   if (week === null) return <LoadingState />;
 
   const played = matchups.some((m) => m.points > 0);
@@ -181,7 +182,7 @@ export function Schedule() {
       </div>
 
       {matchLoading && <LoadingState label="Lade Matchups…" />}
-      {matchError && <ErrorState message={matchError} />}
+      {matchError && <ErrorState message={matchError} onRetry={() => setRetryKey((k) => k + 1)} />}
 
       {!matchLoading && !matchError && (
         <>

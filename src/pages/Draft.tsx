@@ -23,7 +23,15 @@ function ValueBadge({ value }: { value: number | null }) {
 }
 
 export function Draft() {
-  const { league, teams, players, isCurrentSeason, loading: leagueLoading, error: leagueError } = useLeagueData();
+  const {
+    league,
+    teams,
+    players,
+    isCurrentSeason,
+    loading: leagueLoading,
+    error: leagueError,
+    reload,
+  } = useLeagueData();
   const teamByRosterId = useMemo(() => new Map(teams.map((t) => [t.rosterId, t])), [teams]);
 
   const [loading, setLoading] = useState(true);
@@ -33,6 +41,7 @@ export function Draft() {
   const [round, setRound] = useState<number>(1);
   const [viewMode, setViewMode] = useState<'round' | 'team'>('round');
   const [selectedRosterId, setSelectedRosterId] = useState<number | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     if (leagueLoading) return;
@@ -66,7 +75,7 @@ export function Draft() {
     return () => {
       cancelled = true;
     };
-  }, [league, leagueLoading, players]);
+  }, [league, leagueLoading, players, retryKey]);
 
   useEffect(() => {
     if (selectedRosterId == null && teams.length > 0) {
@@ -103,7 +112,7 @@ export function Draft() {
   const visiblePicks = viewMode === 'round' ? roundPicks : teamPicks;
 
   if (leagueLoading) return <LoadingState label="Lade Liga-Daten…" />;
-  if (leagueError) return <ErrorState message={leagueError} />;
+  if (leagueError) return <ErrorState message={leagueError} onRetry={reload} />;
 
   return (
     <div className="page">
@@ -111,7 +120,7 @@ export function Draft() {
 
       {!league?.draft_id && <p className="muted">Für diese Liga wurde kein Draft gefunden.</p>}
       {loading && league?.draft_id && <LoadingState label="Lade Draft…" />}
-      {error && <ErrorState message={error} />}
+      {error && <ErrorState message={error} onRetry={() => setRetryKey((k) => k + 1)} />}
 
       {!loading && !error && picks.length > 0 && (
         <>

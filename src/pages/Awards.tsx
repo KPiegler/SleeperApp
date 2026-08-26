@@ -23,7 +23,15 @@ function pickPlayerName(pick: DraftPick): string {
 }
 
 export function Awards() {
-  const { league, nflState, teams, players, loading: leagueLoading, error: leagueError } = useLeagueData();
+  const {
+    league,
+    nflState,
+    teams,
+    players,
+    loading: leagueLoading,
+    error: leagueError,
+    reload,
+  } = useLeagueData();
   const teamByRosterId = useMemo(() => new Map(teams.map((t) => [t.rosterId, t])), [teams]);
   const weeks = useMemo(() => completedRegularWeeks(nflState, league), [nflState, league]);
   const demo = (i: number) => (teams.length > 0 ? teams[i % teams.length] : undefined);
@@ -35,6 +43,7 @@ export function Awards() {
   const [draftSteal, setDraftSteal] = useState<ReturnType<typeof computeDraftPerformance>[number] | null>(null);
   const [draftFlop, setDraftFlop] = useState<ReturnType<typeof computeDraftPerformance>[number] | null>(null);
   const [extraPlayers, setExtraPlayers] = useState<Record<string, PlayerLite>>({});
+  const [retryKey, setRetryKey] = useState(0);
 
   const mvp = useMemo(() => (weeks.length > 0 ? mvpManager(teams) : null), [teams, weeks.length]);
   const wornOutTeam = useMemo(() => (weeks.length > 0 ? lastPlace(teams) : null), [teams, weeks.length]);
@@ -96,10 +105,10 @@ export function Awards() {
     return () => {
       cancelled = true;
     };
-  }, [league, leagueLoading, weeks, players]);
+  }, [league, leagueLoading, weeks, players, retryKey]);
 
   if (leagueLoading) return <LoadingState label="Lade Liga-Daten…" />;
-  if (leagueError) return <ErrorState message={leagueError} />;
+  if (leagueError) return <ErrorState message={leagueError} onRetry={reload} />;
 
   return (
     <div className="page">
@@ -171,7 +180,7 @@ export function Awards() {
       )}
 
       {loading && weeks.length > 0 && <LoadingState label="Werte die Saison aus…" />}
-      {error && <ErrorState message={error} />}
+      {error && <ErrorState message={error} onRetry={() => setRetryKey((k) => k + 1)} />}
 
       {!loading && !error && weeks.length > 0 && (
         <div className="fun-fact-grid">

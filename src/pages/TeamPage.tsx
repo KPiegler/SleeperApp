@@ -30,6 +30,7 @@ export function TeamPage() {
   const [extraPlayers, setExtraPlayers] = useState<Record<string, PlayerLite>>({});
   const [matchupsByWeek, setMatchupsByWeek] = useState<Map<number, SleeperMatchup[]>>(new Map());
   const [stepIndex, setStepIndex] = useState<number | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   const weeks = useMemo(() => transactionWeeks(nflState, league), [nflState, league]);
 
@@ -85,7 +86,7 @@ export function TeamPage() {
     return () => {
       cancelled = true;
     };
-  }, [league, weeks, players]);
+  }, [league, weeks, players, retryKey]);
 
   const allPlayers = useMemo(() => ({ ...players, ...extraPlayers }), [players, extraPlayers]);
 
@@ -189,7 +190,7 @@ export function TeamPage() {
       </div>
 
       {loading && <LoadingState label="Lade Kader-Verlauf…" />}
-      {error && <ErrorState message={error} />}
+      {error && <ErrorState message={error} onRetry={() => setRetryKey((k) => k + 1)} />}
 
       {!loading && !error && step && (
         <>
