@@ -23,7 +23,7 @@ function ValueBadge({ value }: { value: number | null }) {
 }
 
 export function Draft() {
-  const { league, teams, players, loading: leagueLoading, error: leagueError } = useLeagueData();
+  const { league, teams, players, isCurrentSeason, loading: leagueLoading, error: leagueError } = useLeagueData();
   const teamByRosterId = useMemo(() => new Map(teams.map((t) => [t.rosterId, t])), [teams]);
 
   const [loading, setLoading] = useState(true);
@@ -118,6 +118,13 @@ export function Draft() {
           <p className="muted playoff-picture-note">
             Bewertung auf Basis des Sleeper-Vorsaison-Rankings (ADP-Näherung): je später ein hoch eingeschätzter
             Spieler gepickt wurde, desto größer der Steal.
+            {!isCurrentSeason && (
+              <>
+                {' '}
+                Achtung: Sleeper liefert nur den aktuellen (Live-)Rang – für vergangene Saisons ist das nicht der
+                Rang, den der Spieler tatsächlich zum Draft-Zeitpunkt hatte.
+              </>
+            )}
           </p>
 
           <div className="fun-fact-grid">
