@@ -550,7 +550,14 @@ export function Watchparty() {
 
                   {winProbA !== null && (
                     <div className="winprob-bar">
-                      <div className="winprob-fill" style={{ width: `${(winProbA * 100).toFixed(1)}%` }} />
+                      <div
+                        className={`winprob-segment ${winProbA >= 0.5 ? 'winprob-segment-win' : 'winprob-segment-lose'}`}
+                        style={{ width: `${(winProbA * 100).toFixed(1)}%` }}
+                      />
+                      <div
+                        className={`winprob-segment ${winProbA >= 0.5 ? 'winprob-segment-lose' : 'winprob-segment-win'}`}
+                        style={{ width: `${(100 - winProbA * 100).toFixed(1)}%` }}
+                      />
                       <span className="winprob-label">
                         {(winProbA * 100).toFixed(0)}% / {(100 - winProbA * 100).toFixed(0)}%
                       </span>
