@@ -3,8 +3,15 @@ import { Link } from 'react-router-dom';
 import { useLeagueData } from '../context/LeagueDataContext';
 import { sleeper } from '../api/sleeper';
 import { espn } from '../api/espn';
-import { completedRegularWeeks } from '../lib/scoring';
-import { playerWeeklyPoints, meanVariance, projectSide, winProbability } from '../lib/winProbability';
+import { completedRegularWeeks, computeFantasyPoints } from '../lib/scoring';
+import {
+  playerWeeklyPoints,
+  meanVariance,
+  projectSide,
+  winProbability,
+  buildProjections,
+  applyPositionVarianceFloor,
+} from '../lib/winProbability';
 import { buildLiveGameIndex, isTeamLive } from '../lib/liveGames';
 import { espnTeamToSleeperTeam } from '../lib/nflTeamAliases';
 import { extractBigPlays, matchPlayersInPlay } from '../lib/bigPlays';
@@ -12,8 +19,9 @@ import { initials } from '../lib/avatar';
 import { LoadingState, ErrorState } from '../components/LoadingError';
 import { PlayerCard } from '../components/PlayerCard';
 import { BigPlayTicker } from '../components/BigPlayTicker';
+import { InfoModal } from '../components/InfoModal';
 import type { BigPlay } from '../lib/bigPlays';
-import type { MeanVariance } from '../lib/winProbability';
+import type { MeanVariance, ProjectionMethod } from '../lib/winProbability';
 import type { EspnScoreboard } from '../api/espn';
 import type { SleeperMatchup, Team } from '../api/types';
 
@@ -22,7 +30,23 @@ const ESPN_POLL_INTERVAL_MS = 20_000;
 const TICKER_ITEM_LIFETIME_MS = 20_000;
 const TICKER_MAX_ITEMS = 20;
 
-function MatchupTeamBlock({ team, points, played, won }: { team: Team; points: number; played: boolean; won: boolean }) {
+// Umschaltbar für eine spätere UI-Option - 'season_average' reaktiviert die alte Heuristik
+// (grober Saison-Durchschnitt statt echter Sleeper-Wochenprojektion).
+const PROJECTION_METHOD: ProjectionMethod = 'sleeper_projection';
+
+function MatchupTeamBlock({
+  team,
+  points,
+  played,
+  won,
+  projectedTotal,
+}: {
+  team: Team;
+  points: number;
+  played: boolean;
+  won: boolean;
+  projectedTotal: number;
+}) {
   return (
     <Link to={`/team/${team.rosterId}`} className={`matchup-team ${won ? 'matchup-team-won' : ''}`}>
       {team.avatarUrl ? (
@@ -32,7 +56,9 @@ function MatchupTeamBlock({ team, points, played, won }: { team: Team; points: n
       )}
       <div className="matchup-team-info">
         <div className="team-name">{team.teamName}</div>
-        <div className="owner-name">{team.ownerName}</div>
+        <div className="owner-name">
+          {team.ownerName} <span className="matchup-team-projection">· Proj. {projectedTotal.toFixed(2)}</span>
+        </div>
       </div>
       <div className="matchup-points">{played ? points.toFixed(2) : '–'}</div>
     </Link>
@@ -48,8 +74,10 @@ export function Watchparty() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const [seasonStats, setSeasonStats] = useState<Map<string, MeanVariance>>(new Map());
+  const [projectedPoints, setProjectedPoints] = useState<Map<string, number>>(new Map());
   const [scoreboard, setScoreboard] = useState<EspnScoreboard | null>(null);
   const [ticker, setTicker] = useState<BigPlay[]>([]);
+  const [showInfo, setShowInfo] = useState(false);
 
   const seenPlayIds = useRef<Set<string>>(new Set());
   const settledEvents = useRef<Set<string>>(new Set());
@@ -150,7 +178,11 @@ export function Watchparty() {
         for (const id of allPlayerIds) {
           map.set(id, meanVariance(playerWeeklyPoints(id, weekStatsList, league.scoring_settings)));
         }
-        setSeasonStats(map);
+
+        const positionByPlayer = new Map<string, string | null | undefined>();
+        for (const id of allPlayerIds) positionByPlayer.set(id, players[id]?.position);
+
+        setSeasonStats(applyPositionVarianceFloor(map, positionByPlayer));
       })
       .catch(() => {
         if (!cancelled) setSeasonStats(new Map());
@@ -159,7 +191,32 @@ export function Watchparty() {
     return () => {
       cancelled = true;
     };
-  }, [league, nflState, teams]);
+  }, [league, nflState, teams, players]);
+
+  // Sleeper-Wochenprojektion für die aktuelle Woche - echte, wochenspezifische Punkteschätzung
+  // (Gegner/Verletzungsstatus etc. bereits von Sleeper eingerechnet), einmalig pro Woche geladen.
+  useEffect(() => {
+    if (!league || week === null) return;
+    let cancelled = false;
+
+    sleeper
+      .getProjections(league.season, week)
+      .then((projections) => {
+        if (cancelled) return;
+        const map = new Map<string, number>();
+        for (const p of projections) {
+          map.set(p.player_id, computeFantasyPoints(p.stats ?? undefined, league.scoring_settings));
+        }
+        setProjectedPoints(map);
+      })
+      .catch(() => {
+        if (!cancelled) setProjectedPoints(new Map());
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [league, week]);
 
   // ESPN-Scoreboard: Live-Status pro NFL-Team, Basis für "spielt gerade"-Highlight und Play-by-Play-Polling.
   useEffect(() => {
@@ -250,6 +307,11 @@ export function Watchparty() {
     };
   }, []);
 
+  const projections = useMemo(
+    () => buildProjections(seasonStats, projectedPoints, PROJECTION_METHOD),
+    [seasonStats, projectedPoints],
+  );
+
   const pairs = useMemo(() => {
     const byMatchupId = new Map<number, SleeperMatchup[]>();
     for (const m of matchups) {
@@ -293,10 +355,48 @@ export function Watchparty() {
       </div>
 
       <p className="muted playoff-picture-note">
-        Die Gewinnwahrscheinlichkeit ist eine grobe Schätzung auf Basis der Saison-Durchschnittspunkte deiner
-        Starter – kein echtes Projection-Modell. Der Big-Play-Ticker stammt aus einer inoffiziellen ESPN-Quelle mit
-        unscharfer Spieler-Zuordnung per Namens-Abgleich.
+        Die Gewinnwahrscheinlichkeit ist eine Näherung, keine exakte Sleeper-eigene Berechnung.
+        <button
+          type="button"
+          className="info-btn"
+          onClick={() => setShowInfo(true)}
+          aria-label="Wie wird die Gewinnwahrscheinlichkeit berechnet?"
+        >
+          i
+        </button>{' '}
+        Der Big-Play-Ticker stammt aus einer inoffiziellen ESPN-Quelle mit unscharfer Spieler-Zuordnung per
+        Namens-Abgleich.
       </p>
+
+      {showInfo && (
+        <InfoModal title="Wie wird die Gewinnwahrscheinlichkeit berechnet?" onClose={() => setShowInfo(false)}>
+          <p>Für jeden Starter einer Matchup-Seite wird ein Punkte-Schätzwert und eine Unsicherheit ermittelt:</p>
+          <ul>
+            <li>
+              <strong>Spiel schon beendet:</strong> echte Live-Punkte zählen fix, keine Unsicherheit mehr.
+            </li>
+            <li>
+              <strong>Spiel läuft noch oder hat nicht begonnen:</strong> Sleepers eigene Wochen-Projektion für
+              diesen Spieler, umgerechnet auf das Scoring dieser Liga.
+            </li>
+          </ul>
+          <p>
+            Die Unsicherheit je Spieler kommt aus der Streuung seiner bisherigen Saison-Punkte. Damit ein Spieler
+            mit wenig oder verzerrter Historie (z. B. gerade erst vom Bankspieler zum Starter geworden) nicht
+            künstlich sicher wirkt, wird diese Streuung auf einen Mindestwert angehoben – den Durchschnitt der
+            Streuung aller vergleichbaren Spieler derselben Position in der Liga.
+          </p>
+          <p>
+            Die Gesamtpunkte beider Seiten (Summe aus echten + geschätzten Werten) werden über eine
+            Normalverteilung verglichen, daraus ergibt sich die Prozentzahl.
+          </p>
+          <p>
+            <strong>Bekannte Grenzen:</strong> keine Berücksichtigung von Zusammenhängen zwischen Spielern (z. B.
+            QB und sein eigener Receiver), keine Anpassung der Unsicherheit während das Spiel läuft, und Sleepers
+            eigenes Modell ist nicht öffentlich – exakte Übereinstimmung ist daher nicht zu erwarten.
+          </p>
+        </InfoModal>
+      )}
 
       {!anyGameLive && <div className="banner">Aktuell läuft kein NFL-Spiel – Punkte werden trotzdem aktualisiert, sobald wieder gespielt wird.</div>}
 
@@ -322,19 +422,31 @@ export function Watchparty() {
               const startersA = (a.starters ?? []).filter((id) => id && id !== '0');
               const startersB = b ? (b.starters ?? []).filter((id) => id && id !== '0') : [];
 
-              const projA = projectSide(startersA, a.players_points, isLocked, seasonStats);
-              const projB = b ? projectSide(startersB, b.players_points, isLocked, seasonStats) : null;
+              const projA = projectSide(startersA, a.players_points, isLocked, projections);
+              const projB = b ? projectSide(startersB, b.players_points, isLocked, projections) : null;
               const winProbA = projB ? winProbability(projA, projB) : null;
 
               return (
                 <div className="matchup-card" key={matchupId}>
                   <div className="matchup-header">
-                    <MatchupTeamBlock team={teamA} points={a.points} played={played} won={aWon} />
+                    <MatchupTeamBlock
+                      team={teamA}
+                      points={a.points}
+                      played={played}
+                      won={aWon}
+                      projectedTotal={projA.mean}
+                    />
                     <div className="matchup-vs-col">
                       <span className="matchup-vs">vs</span>
                     </div>
-                    {teamB ? (
-                      <MatchupTeamBlock team={teamB} points={b!.points} played={played} won={bWon} />
+                    {teamB && projB ? (
+                      <MatchupTeamBlock
+                        team={teamB}
+                        points={b!.points}
+                        played={played}
+                        won={bWon}
+                        projectedTotal={projB.mean}
+                      />
                     ) : (
                       <div className="matchup-team matchup-bye">Spielfrei</div>
                     )}
@@ -358,6 +470,7 @@ export function Watchparty() {
                           player={players[id]}
                           extra={`${(a.players_points?.[id] ?? 0).toFixed(1)} Pkt.`}
                           live={isTeamLive(liveIndex, players[id]?.team)}
+                          projection={projections.get(id)?.mean ?? null}
                         />
                       ))}
                     </div>
@@ -370,6 +483,7 @@ export function Watchparty() {
                             player={players[id]}
                             extra={`${(b.players_points?.[id] ?? 0).toFixed(1)} Pkt.`}
                             live={isTeamLive(liveIndex, players[id]?.team)}
+                            projection={projections.get(id)?.mean ?? null}
                           />
                         ))}
                     </div>

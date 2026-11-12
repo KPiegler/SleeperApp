@@ -5,6 +5,7 @@ import type {
   SleeperLeague,
   SleeperMatchup,
   SleeperPlayerRaw,
+  SleeperProjection,
   SleeperRoster,
   SleeperTransaction,
   SleeperUser,
@@ -12,6 +13,7 @@ import type {
 } from './types';
 
 const BASE = 'https://api.sleeper.app/v1';
+const PROJECTIONS_BASE = 'https://api.sleeper.app/projections/nfl';
 
 async function getJSON<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -38,5 +40,7 @@ export const sleeper = {
   getNflState: () => getJSON<NflState>(`${BASE}/state/nfl`),
   getWeekStats: (season: string, week: number) =>
     getJSON<WeekStats>(`${BASE}/stats/nfl/regular/${season}/${week}`),
+  getProjections: (season: string, week: number) =>
+    getJSON<SleeperProjection[]>(`${PROJECTIONS_BASE}/${season}/${week}?season_type=regular`),
   getAllPlayers: () => getJSON<Record<string, SleeperPlayerRaw>>(`${BASE}/players/nfl`),
 };

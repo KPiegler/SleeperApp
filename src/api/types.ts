@@ -73,6 +73,11 @@ export type SleeperPlayerRaw = Partial<PlayerLite> & Record<string, unknown>;
 
 export type WeekStats = Record<string, Record<string, number>>;
 
+export interface SleeperProjection {
+  player_id: string;
+  stats: Record<string, number> | null;
+}
+
 export interface SleeperMatchup {
   roster_id: number;
   matchup_id: number | null;

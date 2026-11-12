@@ -11,6 +11,16 @@ const INJURY_COLORS: Record<string, string> = {
   NA: '#94a3b8',
 };
 
+const INJURY_ABBR: Record<string, string> = {
+  Questionable: 'Q',
+  Doubtful: 'D',
+  Out: 'O',
+  IR: 'IR',
+  PUP: 'PUP',
+  Sus: 'SUS',
+  NA: 'NA',
+};
+
 function playerName(player: PlayerLite | undefined, fallbackId: string): string {
   if (!player) return fallbackId;
   if (player.position === 'DEF') return `${player.first_name} ${player.last_name}`.trim();
@@ -25,6 +35,7 @@ export function PlayerCard({
   extra,
   nflTeam,
   live,
+  projection,
 }: {
   playerId: string;
   player: PlayerLite | undefined;
@@ -32,23 +43,27 @@ export function PlayerCard({
   extra?: string;
   nflTeam?: string | null;
   live?: boolean;
+  projection?: number | null;
 }) {
   const injuryColor = player?.injury_status ? INJURY_COLORS[player.injury_status] : undefined;
+  const injuryAbbr = player?.injury_status ? INJURY_ABBR[player.injury_status] ?? player.injury_status : null;
 
   return (
     <div className={`player-card${live ? ' player-card-live' : ''}`}>
       {slot && <div className="player-card-slot">{slot}</div>}
       <PositionBadge position={player?.position ?? undefined} />
       <div className="player-card-body">
-        <div className="player-card-name">{playerName(player, playerId)}</div>
-        <div className="player-card-meta">
-          {(nflTeam ?? player?.team) ?? 'FA'}
-          {player?.injury_status && (
-            <span className="injury-tag" style={{ color: injuryColor }}>
-              {' '}
-              · {player.injury_status}
+        <div className="player-card-name">
+          {playerName(player, playerId)}
+          {injuryAbbr && (
+            <span className="injury-badge" style={{ color: injuryColor, borderColor: injuryColor }}>
+              {injuryAbbr}
             </span>
           )}
+        </div>
+        <div className="player-card-meta">
+          {(nflTeam ?? player?.team) ?? 'FA'}
+          {projection != null && <span className="player-card-projection"> · Proj. {projection.toFixed(2)}</span>}
         </div>
       </div>
       {extra && <div className="player-card-extra">{extra}</div>}
