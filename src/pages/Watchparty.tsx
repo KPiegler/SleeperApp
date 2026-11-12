@@ -14,11 +14,12 @@ import {
 } from '../lib/winProbability';
 import { buildLiveGameIndex, isTeamLive } from '../lib/liveGames';
 import { espnTeamToSleeperTeam } from '../lib/nflTeamAliases';
-import { extractBigPlays, matchPlayersInPlay } from '../lib/bigPlays';
+import { extractBigPlays, estimatePlayPoints } from '../lib/bigPlays';
 import { initials } from '../lib/avatar';
 import { LoadingState, ErrorState } from '../components/LoadingError';
 import { PlayerCard } from '../components/PlayerCard';
 import { BigPlayTicker } from '../components/BigPlayTicker';
+import { TouchdownOverlay } from '../components/TouchdownOverlay';
 import { InfoModal } from '../components/InfoModal';
 import type { BigPlay } from '../lib/bigPlays';
 import type { MeanVariance, ProjectionMethod } from '../lib/winProbability';
@@ -28,11 +29,15 @@ import type { SleeperMatchup, Team } from '../api/types';
 const SLEEPER_POLL_INTERVAL_MS = 30_000;
 const ESPN_POLL_INTERVAL_MS = 20_000;
 const TICKER_ITEM_LIFETIME_MS = 20_000;
-const TICKER_MAX_ITEMS = 20;
+const TICKER_MAX_ITEMS = 2;
 
 // Umschaltbar für eine spätere UI-Option - 'season_average' reaktiviert die alte Heuristik
 // (grober Saison-Durchschnitt statt echter Sleeper-Wochenprojektion).
 const PROJECTION_METHOD: ProjectionMethod = 'sleeper_projection';
+
+function formatPoints(n: number): string {
+  return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
 function MatchupTeamBlock({
   team,
@@ -40,15 +45,20 @@ function MatchupTeamBlock({
   played,
   won,
   projectedTotal,
+  reverse,
 }: {
   team: Team;
   points: number;
   played: boolean;
   won: boolean;
   projectedTotal: number;
+  reverse?: boolean;
 }) {
   return (
-    <Link to={`/team/${team.rosterId}`} className={`matchup-team ${won ? 'matchup-team-won' : ''}`}>
+    <Link
+      to={`/team/${team.rosterId}`}
+      className={`matchup-team ${won ? 'matchup-team-won' : ''} ${reverse ? 'matchup-team-reverse' : ''}`}
+    >
       {team.avatarUrl ? (
         <img src={team.avatarUrl} alt="" className="table-avatar" />
       ) : (
@@ -57,10 +67,11 @@ function MatchupTeamBlock({
       <div className="matchup-team-info">
         <div className="team-name">{team.teamName}</div>
         <div className="owner-name">
-          {team.ownerName} <span className="matchup-team-projection">· Proj. {projectedTotal.toFixed(2)}</span>
+          <span className="matchup-team-projection">Proj. {formatPoints(projectedTotal)}</span>
+          <span className="matchup-team-owner">{team.ownerName}</span>
         </div>
       </div>
-      <div className="matchup-points">{played ? points.toFixed(2) : '–'}</div>
+      <div className="matchup-points">{played ? formatPoints(points) : '–'}</div>
     </Link>
   );
 }
@@ -77,6 +88,7 @@ export function Watchparty() {
   const [projectedPoints, setProjectedPoints] = useState<Map<string, number>>(new Map());
   const [scoreboard, setScoreboard] = useState<EspnScoreboard | null>(null);
   const [ticker, setTicker] = useState<BigPlay[]>([]);
+  const [touchdownAlert, setTouchdownAlert] = useState<BigPlay | null>(null);
   const [showInfo, setShowInfo] = useState(false);
 
   const seenPlayIds = useRef<Set<string>>(new Set());
@@ -96,13 +108,25 @@ export function Watchparty() {
     }
     return map;
   }, [teams]);
-  const relevantTeams = useMemo(() => {
+  // Nur Spieler, die in dieser Woche irgendwo in der Liga tatsächlich STARTEN - Big Plays sollen
+  // sich nicht auf Bankspieler beziehen.
+  const startingPlayerIds = useMemo(() => {
     const set = new Set<string>();
-    for (const p of Object.values(players)) {
-      if (p.team) set.add(p.team);
+    for (const m of matchups) {
+      for (const id of m.starters ?? []) {
+        if (id && id !== '0') set.add(id);
+      }
     }
     return set;
-  }, [players]);
+  }, [matchups]);
+  const relevantTeams = useMemo(() => {
+    const set = new Set<string>();
+    for (const id of startingPlayerIds) {
+      const team = players[id]?.team;
+      if (team) set.add(team);
+    }
+    return set;
+  }, [startingPlayerIds, players]);
   const liveIndex = useMemo(() => (scoreboard ? buildLiveGameIndex(scoreboard) : new Map()), [scoreboard]);
 
   const isLocked = useMemo(
@@ -245,7 +269,7 @@ export function Watchparty() {
 
   // ESPN-Play-by-Play: nur für laufende Spiele mit mindestens einem in unserer Liga rostierten Spieler.
   useEffect(() => {
-    if (!scoreboard) return;
+    if (!scoreboard || !league) return;
     let cancelled = false;
 
     const eventsToFetch = scoreboard.events.filter((event) => {
@@ -264,7 +288,7 @@ export function Watchparty() {
         espnTeamToSleeperTeam(c.team.abbreviation),
       );
       const candidates = Object.entries(players)
-        .filter(([, p]) => p.team && eventTeams.includes(p.team))
+        .filter(([id, p]) => p.team && eventTeams.includes(p.team) && startingPlayerIds.has(id))
         .map(([id, p]) => ({ id, firstName: p.first_name, lastName: p.last_name }));
 
       espn
@@ -278,8 +302,12 @@ export function Watchparty() {
 
           for (const play of newPlays) {
             seenPlayIds.current.add(play.id);
-            play.matchedPlayerIds = matchPlayersInPlay(play.text, candidates);
+            play.pointsByPlayerId = estimatePlayPoints(play, candidates, league.scoring_settings);
+            play.matchedPlayerIds = Object.keys(play.pointsByPlayerId);
           }
+
+          const newTouchdown = newPlays.find((p) => p.category === 'TD');
+          if (newTouchdown) setTouchdownAlert(newTouchdown);
 
           setTicker((prev) => [...newPlays.reverse(), ...prev].slice(0, TICKER_MAX_ITEMS));
 
@@ -299,7 +327,7 @@ export function Watchparty() {
     return () => {
       cancelled = true;
     };
-  }, [scoreboard, relevantTeams, players]);
+  }, [scoreboard, relevantTeams, players, league, startingPlayerIds]);
 
   useEffect(() => {
     return () => {
@@ -400,6 +428,15 @@ export function Watchparty() {
 
       {!anyGameLive && <div className="banner">Aktuell läuft kein NFL-Spiel – Punkte werden trotzdem aktualisiert, sobald wieder gespielt wird.</div>}
 
+      {touchdownAlert && (
+        <TouchdownOverlay
+          play={touchdownAlert}
+          players={players}
+          teamByPlayerId={teamByPlayerId}
+          onDone={() => setTouchdownAlert(null)}
+        />
+      )}
+
       <BigPlayTicker plays={ticker} teamByPlayerId={teamByPlayerId} players={players} />
 
       {matchLoading && <LoadingState label="Lade Matchups…" />}
@@ -446,6 +483,7 @@ export function Watchparty() {
                         played={played}
                         won={bWon}
                         projectedTotal={projB.mean}
+                        reverse
                       />
                     ) : (
                       <div className="matchup-team matchup-bye">Spielfrei</div>

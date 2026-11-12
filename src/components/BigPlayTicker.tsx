@@ -29,29 +29,38 @@ export function BigPlayTicker({
 
   return (
     <div className="bigplay-ticker">
-      {plays.map((play) => {
-        const playerId = play.matchedPlayerIds[0];
-        const player = playerId ? players[playerId] : undefined;
-        const team = playerId ? teamByPlayerId.get(playerId) : undefined;
-
-        return (
-          <div className={`bigplay-item bigplay-item-${play.category.toLowerCase()}`} key={play.id}>
-            <span className="bigplay-emoji">{CATEGORY_EMOJI[play.category]}</span>
-            <div className="bigplay-body">
-              <div className="bigplay-headline">
-                <span className="bigplay-category">{CATEGORY_LABEL[play.category]}</span>
-                {player && (
-                  <span className="bigplay-player">
-                    {player.first_name} {player.last_name}
+      {plays.map((play) => (
+        <div className={`bigplay-item bigplay-item-${play.category.toLowerCase()}`} key={play.id}>
+          <span className="bigplay-emoji">{CATEGORY_EMOJI[play.category]}</span>
+          <div className="bigplay-body">
+            <div className="bigplay-headline">
+              <span className="bigplay-category">{CATEGORY_LABEL[play.category]}</span>
+              {play.matchedPlayerIds.map((playerId) => {
+                const player = players[playerId];
+                const team = teamByPlayerId.get(playerId);
+                const points = play.pointsByPlayerId[playerId];
+                return (
+                  <span className="bigplay-player-group" key={playerId}>
+                    {player && (
+                      <span className="bigplay-player">
+                        {player.first_name} {player.last_name}
+                        {points != null && (
+                          <span className={`bigplay-points ${points < 0 ? 'bigplay-points-negative' : ''}`}>
+                            {points > 0 ? '+' : ''}
+                            {points.toFixed(2)} Pkt.
+                          </span>
+                        )}
+                      </span>
+                    )}
+                    {team && <TeamPill team={team} />}
                   </span>
-                )}
-                {team && <TeamPill team={team} />}
-              </div>
-              <div className="bigplay-text">{play.text}</div>
+                );
+              })}
             </div>
+            <div className="bigplay-text">{play.text}</div>
           </div>
-        );
-      })}
+        </div>
+      ))}
     </div>
   );
 }
