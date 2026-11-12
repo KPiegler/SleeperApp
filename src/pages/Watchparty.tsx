@@ -90,6 +90,8 @@ export function Watchparty() {
   const [ticker, setTicker] = useState<BigPlay[]>([]);
   const [touchdownAlert, setTouchdownAlert] = useState<BigPlay | null>(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [visibleMatchupIds, setVisibleMatchupIds] = useState<Set<number> | null>(null);
+  const [showMatchupPicker, setShowMatchupPicker] = useState(false);
 
   const seenPlayIds = useRef<Set<string>>(new Set());
   const settledEvents = useRef<Set<string>>(new Set());
@@ -108,17 +110,18 @@ export function Watchparty() {
     }
     return map;
   }, [teams]);
-  // Nur Spieler, die in dieser Woche irgendwo in der Liga tatsächlich STARTEN - Big Plays sollen
-  // sich nicht auf Bankspieler beziehen.
+  // Nur Spieler, die in dieser Woche in einem aktuell SICHTBAREN Matchup tatsächlich STARTEN - Big
+  // Plays sollen sich weder auf Bankspieler noch auf ausgeblendete Matchups beziehen.
   const startingPlayerIds = useMemo(() => {
     const set = new Set<string>();
     for (const m of matchups) {
+      if (visibleMatchupIds !== null && (m.matchup_id == null || !visibleMatchupIds.has(m.matchup_id))) continue;
       for (const id of m.starters ?? []) {
         if (id && id !== '0') set.add(id);
       }
     }
     return set;
-  }, [matchups]);
+  }, [matchups, visibleMatchupIds]);
   const relevantTeams = useMemo(() => {
     const set = new Set<string>();
     for (const id of startingPlayerIds) {
@@ -351,6 +354,21 @@ export function Watchparty() {
     return Array.from(byMatchupId.entries());
   }, [matchups]);
 
+  const visiblePairs = useMemo(
+    () => (visibleMatchupIds === null ? pairs : pairs.filter(([matchupId]) => visibleMatchupIds.has(matchupId))),
+    [pairs, visibleMatchupIds],
+  );
+
+  const toggleMatchupVisibility = (matchupId: number) => {
+    setVisibleMatchupIds((prev) => {
+      const base = prev ?? new Set(pairs.map(([id]) => id));
+      const next = new Set(base);
+      if (next.has(matchupId)) next.delete(matchupId);
+      else next.add(matchupId);
+      return next;
+    });
+  };
+
   const played = matchups.some((m) => m.points > 0);
   const anyGameLive = scoreboard?.events.some((e) => e.status.type.state === 'in') ?? false;
 
@@ -368,7 +386,47 @@ export function Watchparty() {
 
   return (
     <div className="page">
-      <h1>Live-Ticker</h1>
+      <div className="page-title-row">
+        <h1>Live-Ticker</h1>
+        {pairs.length > 1 && (
+          <button type="button" className="btn btn-ghost" onClick={() => setShowMatchupPicker(true)}>
+            Matchups auswählen
+          </button>
+        )}
+      </div>
+
+      {showMatchupPicker && (
+        <InfoModal title="Matchups auswählen" onClose={() => setShowMatchupPicker(false)}>
+          <div className="filter-group">
+            <button
+              type="button"
+              className={`chip ${visibleMatchupIds === null ? 'chip-active' : ''}`}
+              onClick={() => setVisibleMatchupIds(null)}
+            >
+              Alle
+            </button>
+            {pairs.map(([matchupId, entries]) => {
+              const [a, b] = entries;
+              const teamA = teamByRosterId.get(a.roster_id);
+              const teamB = b ? teamByRosterId.get(b.roster_id) : undefined;
+              const isVisible = visibleMatchupIds === null || visibleMatchupIds.has(matchupId);
+              const label = teamB
+                ? `${teamA?.teamName ?? '?'} vs ${teamB.teamName}`
+                : `${teamA?.teamName ?? '?'} (Spielfrei)`;
+              return (
+                <button
+                  key={matchupId}
+                  type="button"
+                  className={`chip ${isVisible ? 'chip-active' : ''}`}
+                  onClick={() => toggleMatchupVisibility(matchupId)}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </InfoModal>
+      )}
 
       <div className="week-picker">
         <span className="live-badge">
@@ -447,7 +505,7 @@ export function Watchparty() {
           {matchups.length === 0 && <p className="muted">Für diese Woche sind noch keine Matchups verfügbar.</p>}
 
           <div className="matchup-grid matchup-grid-live">
-            {pairs.map(([matchupId, entries]) => {
+            {visiblePairs.map(([matchupId, entries]) => {
               const [a, b] = entries;
               const teamA = a ? teamByRosterId.get(a.roster_id) : undefined;
               const teamB = b ? teamByRosterId.get(b.roster_id) : undefined;

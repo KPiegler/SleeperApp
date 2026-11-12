@@ -239,6 +239,19 @@ h2 {
   width: 100%;
 }
 
+.page-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.page-title-row h1 {
+  margin-bottom: 0;
+}
+
 .muted {
   color: var(--muted);
 }
