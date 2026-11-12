@@ -36,6 +36,7 @@ export function PlayerCard({
   nflTeam,
   live,
   projection,
+  redZone,
 }: {
   playerId: string;
   player: PlayerLite | undefined;
@@ -44,12 +45,13 @@ export function PlayerCard({
   nflTeam?: string | null;
   live?: boolean;
   projection?: number | null;
+  redZone?: boolean;
 }) {
   const injuryColor = player?.injury_status ? INJURY_COLORS[player.injury_status] : undefined;
   const injuryAbbr = player?.injury_status ? INJURY_ABBR[player.injury_status] ?? player.injury_status : null;
 
   return (
-    <div className={`player-card${live ? ' player-card-live' : ''}`}>
+    <div className={`player-card${live ? ' player-card-live' : ''}${redZone ? ' player-card-redzone' : ''}`}>
       {slot && <div className="player-card-slot">{slot}</div>}
       <PositionBadge position={player?.position ?? undefined} />
       <div className="player-card-body">

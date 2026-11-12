@@ -12,7 +12,7 @@ import {
   buildProjections,
   applyPositionVarianceFloor,
 } from '../lib/winProbability';
-import { buildLiveGameIndex, isTeamLive } from '../lib/liveGames';
+import { buildLiveGameIndex, isTeamLive, buildRedZoneTeams } from '../lib/liveGames';
 import { espnTeamToSleeperTeam } from '../lib/nflTeamAliases';
 import { extractBigPlays, estimatePlayPoints } from '../lib/bigPlays';
 import { initials } from '../lib/avatar';
@@ -131,6 +131,7 @@ export function Watchparty() {
     return set;
   }, [startingPlayerIds, players]);
   const liveIndex = useMemo(() => (scoreboard ? buildLiveGameIndex(scoreboard) : new Map()), [scoreboard]);
+  const redZoneTeams = useMemo(() => (scoreboard ? buildRedZoneTeams(scoreboard) : new Set<string>()), [scoreboard]);
 
   const isLocked = useMemo(
     () => (playerId: string) => {
@@ -574,6 +575,7 @@ export function Watchparty() {
                           extra={`${(a.players_points?.[id] ?? 0).toFixed(1)} Pkt.`}
                           live={isTeamLive(liveIndex, players[id]?.team)}
                           projection={projections.get(id)?.mean ?? null}
+                          redZone={redZoneTeams.has(players[id]?.team ?? '')}
                         />
                       ))}
                     </div>
@@ -587,6 +589,7 @@ export function Watchparty() {
                             extra={`${(b.players_points?.[id] ?? 0).toFixed(1)} Pkt.`}
                             live={isTeamLive(liveIndex, players[id]?.team)}
                             projection={projections.get(id)?.mean ?? null}
+                            redZone={redZoneTeams.has(players[id]?.team ?? '')}
                           />
                         ))}
                     </div>

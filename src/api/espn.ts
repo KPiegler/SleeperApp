@@ -1,9 +1,17 @@
 const BASE = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl';
 
+export interface EspnSituation {
+  isRedZone?: boolean;
+  possession?: string;
+}
+
 export interface EspnScoreboardEvent {
   id: string;
   status: { type: { state: 'pre' | 'in' | 'post' } };
-  competitions: Array<{ competitors: Array<{ team: { abbreviation: string } }> }>;
+  competitions: Array<{
+    competitors: Array<{ id?: string; team: { abbreviation: string } }>;
+    situation?: EspnSituation;
+  }>;
 }
 
 export interface EspnScoreboard {

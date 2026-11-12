@@ -34,3 +34,27 @@ export function isTeamLive(index: Map<string, LiveGameInfo>, team: string | null
   if (!team) return false;
   return index.get(team)?.state === 'in';
 }
+
+/**
+ * Sleeper-Team-Kürzel aller Teams, die laut ESPN gerade in der Red Zone am Ball sind. Basiert auf
+ * dem `situation`-Feld, das ESPN nur während eines laufenden Spiels liefert - Format noch nicht
+ * gegen echte Live-Daten verifiziert (keine NFL-Spiele zum Testzeitpunkt live), daher bewusst
+ * defensiv: liefert einfach eine leere Menge, wenn das Feld fehlt oder anders aussieht als erwartet.
+ */
+export function buildRedZoneTeams(scoreboard: EspnScoreboard): Set<string> {
+  const redZoneTeams = new Set<string>();
+
+  for (const event of scoreboard.events) {
+    if (event.status.type.state !== 'in') continue;
+    const competition = event.competitions?.[0];
+    const situation = competition?.situation;
+    if (!situation?.isRedZone || !situation.possession) continue;
+
+    const possessor = competition.competitors.find((c) => c.id === situation.possession);
+    if (possessor?.team.abbreviation) {
+      redZoneTeams.add(espnTeamToSleeperTeam(possessor.team.abbreviation));
+    }
+  }
+
+  return redZoneTeams;
+}
