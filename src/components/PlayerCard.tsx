@@ -24,17 +24,19 @@ export function PlayerCard({
   slot,
   extra,
   nflTeam,
+  live,
 }: {
   playerId: string;
   player: PlayerLite | undefined;
   slot?: string;
   extra?: string;
   nflTeam?: string | null;
+  live?: boolean;
 }) {
   const injuryColor = player?.injury_status ? INJURY_COLORS[player.injury_status] : undefined;
 
   return (
-    <div className="player-card">
+    <div className={`player-card${live ? ' player-card-live' : ''}`}>
       {slot && <div className="player-card-slot">{slot}</div>}
       <PositionBadge position={player?.position ?? undefined} />
       <div className="player-card-body">

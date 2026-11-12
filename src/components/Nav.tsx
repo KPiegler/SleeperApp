@@ -54,6 +54,9 @@ export function Nav() {
         <NavLink to="/spielplan" className={({ isActive }) => (isActive ? 'active' : '')}>
           Spielplan
         </NavLink>
+        <NavLink to="/live-ticker" className={({ isActive }) => (isActive ? 'active' : '')}>
+          Live-Ticker
+        </NavLink>
         <NavLink to="/teilnehmer" className={({ isActive }) => (isActive ? 'active' : '')}>
           Teilnehmer:innen
         </NavLink>

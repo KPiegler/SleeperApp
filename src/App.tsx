@@ -7,6 +7,7 @@ import { Participants } from './pages/Participants';
 import { TopPlayers } from './pages/TopPlayers';
 import { TeamPage } from './pages/TeamPage';
 import { Schedule } from './pages/Schedule';
+import { Watchparty } from './pages/Watchparty';
 import { FunFacts } from './pages/FunFacts';
 import { PlayerHistory } from './pages/PlayerHistory';
 import { Draft } from './pages/Draft';
@@ -30,16 +31,19 @@ function AppShell() {
     );
   }
 
+  const isWide = location.pathname === '/live-ticker';
+
   return (
     <div className="app">
       <Nav />
-      <main className="main">
+      <main className={`main${isWide ? ' main-wide' : ''}`}>
         {loading && <LoadingState />}
         {!loading && error && <ErrorState message={error} onRetry={reload} />}
         {!loading && !error && (
           <Routes>
             <Route path="/" element={<Standings />} />
             <Route path="/spielplan" element={<Schedule />} />
+            <Route path="/live-ticker" element={<Watchparty />} />
             <Route path="/teilnehmer" element={<Participants />} />
             <Route path="/top-spieler" element={<TopPlayers />} />
             <Route path="/fun-facts" element={<FunFacts />} />
