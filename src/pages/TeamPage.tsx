@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useLeagueData } from '../context/LeagueDataContext';
 import { sleeper } from '../api/sleeper';
 import { getPlayersFor } from '../api/playersCache';
 import { transactionWeeks } from '../lib/transactions';
 import { buildRosterTimeline } from '../lib/rosterTimeline';
+import { fetchTeamByWeek } from '../lib/nflTeamHistory';
 import { PlayerCard } from '../components/PlayerCard';
 import { LoadingState, ErrorState } from '../components/LoadingError';
 import { initials } from '../lib/avatar';
@@ -31,6 +32,8 @@ export function TeamPage() {
   const [matchupsByWeek, setMatchupsByWeek] = useState<Map<number, SleeperMatchup[]>>(new Map());
   const [stepIndex, setStepIndex] = useState<number | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  const [teamByWeekByPlayer, setTeamByWeekByPlayer] = useState<Map<string, Map<number, string>>>(new Map());
+  const fetchedTeamHistoryIds = useRef<Set<string>>(new Set());
 
   const weeks = useMemo(() => transactionWeeks(nflState, league), [nflState, league]);
 
@@ -98,8 +101,10 @@ export function TeamPage() {
     return map;
   }, [draftPicks]);
 
-  const nflTeamFor = (id: string) =>
-    (isPastSeason ? draftTeamByPlayer[id] : undefined) ?? allPlayers[id]?.team ?? null;
+  const nflTeamFor = (id: string, week: number | null) => {
+    const weekTeam = week != null ? teamByWeekByPlayer.get(id)?.get(week) : undefined;
+    return weekTeam ?? (isPastSeason ? draftTeamByPlayer[id] : undefined) ?? allPlayers[id]?.team ?? null;
+  };
 
   const timeline = useMemo(
     () => buildRosterTimeline(numericRosterId, draftPicks, transactions),
@@ -120,6 +125,43 @@ export function TeamPage() {
     setStepIndex(timeline.length - 1);
   }, [timeline, stepIndex, loading]);
 
+  const currentStepIndex = stepIndex ?? 0;
+  const step = timeline[currentStepIndex];
+
+  // NFL-Team zur gerade angezeigten Woche per ESPN-Gamelog nachladen - deckt unterjährige
+  // NFL-Trades ab, die Sleeper selbst nicht rückwirkend abbildet. Pro Spieler nur einmal geladen.
+  // Bewusst ohne "cancelled"-Abbruch bei Schritt-Wechsel: die Daten sind spieler-, nicht
+  // schritt-gebunden, ein später eintreffendes Ergebnis ist also immer noch gültig und darf nicht
+  // verworfen werden - sonst bleibt der Spieler dauerhaft auf dem Fallback-Team hängen.
+  useEffect(() => {
+    if (!step) return;
+    const idsNeeded = step.playerIds.filter((id) => {
+      const espnId = allPlayers[id]?.espn_id;
+      return espnId && !fetchedTeamHistoryIds.current.has(id);
+    });
+    if (idsNeeded.length === 0) return;
+    for (const id of idsNeeded) fetchedTeamHistoryIds.current.add(id);
+
+    Promise.all(
+      idsNeeded.map((id) =>
+        fetchTeamByWeek(allPlayers[id]!.espn_id!)
+          .then((map) => ({ id, map }))
+          .catch(() => {
+            fetchedTeamHistoryIds.current.delete(id);
+            return null;
+          }),
+      ),
+    ).then((results) => {
+      const successful = results.filter((r): r is { id: string; map: Map<number, string> } => r !== null);
+      if (successful.length === 0) return;
+      setTeamByWeekByPlayer((prev) => {
+        const next = new Map(prev);
+        for (const { id, map } of successful) next.set(id, map);
+        return next;
+      });
+    });
+  }, [step, allPlayers]);
+
   const team = teams.find((t) => t.rosterId === numericRosterId);
 
   if (!team) {
@@ -130,9 +172,6 @@ export function TeamPage() {
       </div>
     );
   }
-
-  const currentStepIndex = stepIndex ?? 0;
-  const step = timeline[currentStepIndex];
 
   const nonBenchSlots = (league?.roster_positions ?? []).filter((p) => p !== 'BN');
   const reserveSet = new Set(team.reserve);
@@ -261,7 +300,7 @@ export function TeamPage() {
                 playerId={id}
                 player={allPlayers[id]}
                 slot={starterSlotForStep.get(id) ?? '—'}
-                nflTeam={nflTeamFor(id)}
+                nflTeam={nflTeamFor(id, step.week)}
               />
             ))}
           </div>
@@ -270,7 +309,7 @@ export function TeamPage() {
           <div className="player-grid">
             {stepBench.length === 0 && <p className="muted">Keine Bankspieler.</p>}
             {stepBench.map((id) => (
-              <PlayerCard key={id} playerId={id} player={allPlayers[id]} nflTeam={nflTeamFor(id)} />
+              <PlayerCard key={id} playerId={id} player={allPlayers[id]} nflTeam={nflTeamFor(id, step.week)} />
             ))}
           </div>
 
@@ -279,7 +318,7 @@ export function TeamPage() {
               <h2>Verletztenliste (IR)</h2>
               <div className="player-grid">
                 {stepReserve.map((id) => (
-                  <PlayerCard key={id} playerId={id} player={allPlayers[id]} nflTeam={nflTeamFor(id)} />
+                  <PlayerCard key={id} playerId={id} player={allPlayers[id]} nflTeam={nflTeamFor(id, step.week)} />
                 ))}
               </div>
             </>

@@ -1,4 +1,5 @@
 const BASE = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl';
+const ATHLETES_BASE = 'https://site.web.api.espn.com/apis/common/v3/sports/football/nfl/athletes';
 
 export interface EspnSituation {
   isRedZone?: boolean;
@@ -35,6 +36,15 @@ export interface EspnSummary {
   drives?: { previous?: Array<{ plays: EspnPlay[] }> };
 }
 
+export interface EspnGamelogEvent {
+  week: number;
+  team?: { abbreviation: string };
+}
+
+export interface EspnGamelog {
+  events: Record<string, EspnGamelogEvent>;
+}
+
 async function getJSON<T>(url: string): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) {
@@ -51,4 +61,6 @@ async function getJSON<T>(url: string): Promise<T> {
 export const espn = {
   getScoreboard: () => getJSON<EspnScoreboard>(`${BASE}/scoreboard`),
   getSummary: (eventId: string) => getJSON<EspnSummary>(`${BASE}/summary?event=${eventId}`),
+  /** Pro-Spiel-Historie eines Spielers inkl. NFL-Team zu jeder Woche - deckt unterjährige Trades ab. */
+  getGamelog: (espnId: string) => getJSON<EspnGamelog>(`${ATHLETES_BASE}/${espnId}/gamelog`),
 };

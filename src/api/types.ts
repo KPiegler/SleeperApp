@@ -67,6 +67,7 @@ export interface PlayerLite {
   number: number | null;
   age: number | null;
   search_rank: number | null;
+  espn_id: string | null;
 }
 
 export type SleeperPlayerRaw = Partial<PlayerLite> & Record<string, unknown>;

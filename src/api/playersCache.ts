@@ -1,7 +1,7 @@
 import { sleeper } from './sleeper';
 import type { PlayerLite } from './types';
 
-const CACHE_KEY = 'sleeper_players_cache_v1';
+const CACHE_KEY = 'sleeper_players_cache_v3';
 const TTL_MS = 24 * 60 * 60 * 1000;
 
 interface CacheShape {
@@ -60,6 +60,7 @@ export async function getPlayersFor(ids: string[]): Promise<Record<string, Playe
       number: (p.number as number) ?? null,
       age: (p.age as number) ?? null,
       search_rank: (p.search_rank as number) ?? null,
+      espn_id: (p.espn_id as string) ?? null,
     };
   }
 
