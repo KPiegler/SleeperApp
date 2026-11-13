@@ -20,13 +20,14 @@ import { formatLiveStatLine } from '../lib/liveStatLine';
 import { initials } from '../lib/avatar';
 import { LoadingState, ErrorState } from '../components/LoadingError';
 import { PlayerCard } from '../components/PlayerCard';
+import { TeamPill } from '../components/TeamPill';
 import { BigPlayTicker } from '../components/BigPlayTicker';
 import { TouchdownOverlay } from '../components/TouchdownOverlay';
 import { InfoModal } from '../components/InfoModal';
 import type { BigPlay } from '../lib/bigPlays';
 import type { MeanVariance, ProjectionMethod } from '../lib/winProbability';
 import type { EspnScoreboard } from '../api/espn';
-import type { SleeperMatchup, Team, WeekStats } from '../api/types';
+import type { PlayerLite, SleeperMatchup, Team, WeekStats } from '../api/types';
 
 const SLEEPER_POLL_INTERVAL_MS = 30_000;
 const ESPN_POLL_INTERVAL_MS = 20_000;
@@ -76,6 +77,74 @@ function MatchupTeamBlock({
       </div>
       <div className="matchup-points">{played ? formatPoints(points) : '–'}</div>
     </Link>
+  );
+}
+
+function LeaderTile({
+  emoji,
+  title,
+  playerId,
+  players,
+  rosterId,
+  teamByRosterId,
+  valueLabel,
+  negative,
+}: {
+  emoji: string;
+  title: string;
+  playerId: string;
+  players: Record<string, PlayerLite>;
+  rosterId: number;
+  teamByRosterId: Map<number, Team>;
+  valueLabel: string;
+  negative?: boolean;
+}) {
+  const player = players[playerId];
+  return (
+    <div className="watchparty-leader-card">
+      <div className="watchparty-leader-emoji">{emoji}</div>
+      <div className="watchparty-leader-title">{title}</div>
+      <div className="watchparty-leader-name">{player ? `${player.first_name} ${player.last_name}` : playerId}</div>
+      <div className={`watchparty-leader-value${negative ? ' watchparty-leader-value-negative' : ''}`}>
+        {valueLabel}
+      </div>
+      <TeamPill team={teamByRosterId.get(rosterId)} />
+    </div>
+  );
+}
+
+function EmptyLeaderTile({ emoji, title, message }: { emoji: string; title: string; message: string }) {
+  return (
+    <div className="watchparty-leader-card watchparty-leader-card-empty">
+      <div className="watchparty-leader-emoji">{emoji}</div>
+      <div className="watchparty-leader-title">{title}</div>
+      <div className="muted">{message}</div>
+    </div>
+  );
+}
+
+function TeamStatTile({
+  emoji,
+  title,
+  team,
+  valueLabel,
+  negative,
+}: {
+  emoji: string;
+  title: string;
+  team: Team | undefined;
+  valueLabel: string;
+  negative?: boolean;
+}) {
+  return (
+    <div className="watchparty-leader-card">
+      <div className="watchparty-leader-emoji">{emoji}</div>
+      <div className="watchparty-leader-title">{title}</div>
+      <TeamPill team={team} />
+      <div className={`watchparty-leader-value${negative ? ' watchparty-leader-value-negative' : ''}`}>
+        {valueLabel}
+      </div>
+    </div>
   );
 }
 
@@ -409,6 +478,80 @@ export function Watchparty() {
     [pairs, visibleMatchupIds],
   );
 
+  // Nur für den Vollbild-Modus: Bester Spieler der Woche, größter Over-/Underperformer und
+  // bester gerade LIVE spielender Spieler, alles über die sichtbaren Matchups hinweg, auf Basis
+  // der eh schon gepollten Live-Punkte/Projections/Spielstatus.
+  const liveLeaders = useMemo(() => {
+    let best: { playerId: string; rosterId: number; points: number } | null = null;
+    let bestOver: { playerId: string; rosterId: number; points: number; delta: number } | null = null;
+    let worstUnder: { playerId: string; rosterId: number; points: number; delta: number } | null = null;
+    let bestLive: { playerId: string; rosterId: number; points: number } | null = null;
+
+    for (const [, entries] of visiblePairs) {
+      for (const m of entries) {
+        const starters = (m.starters ?? []).filter((id) => id && id !== '0');
+        for (const id of starters) {
+          const points = m.players_points?.[id] ?? 0;
+          if (!best || points > best.points) best = { playerId: id, rosterId: m.roster_id, points };
+
+          const team = players[id]?.team;
+          const live = isTeamLive(liveIndex, team);
+          const hasPlayedOrPlaying = live || isTeamFinished(liveIndex, team);
+
+          if (hasPlayedOrPlaying) {
+            const proj = projections.get(id)?.mean ?? 0;
+            const delta = points - proj;
+            if (!bestOver || delta > bestOver.delta) bestOver = { playerId: id, rosterId: m.roster_id, points, delta };
+            if (!worstUnder || delta < worstUnder.delta) worstUnder = { playerId: id, rosterId: m.roster_id, points, delta };
+          }
+
+          if (live) {
+            if (!bestLive || points > bestLive.points) bestLive = { playerId: id, rosterId: m.roster_id, points };
+          }
+        }
+      }
+    }
+
+    return { best, bestOver, worstUnder, bestLive };
+  }, [visiblePairs, projections, liveIndex, players]);
+
+  // Welches Team hat gerade die meisten über- bzw. unterperformenden Starter (nur Spieler, die
+  // schon gespielt haben oder gerade spielen - sonst wäre "0 gespielt" fälschlich ein Underperform).
+  const teamPerformanceLeaders = useMemo(() => {
+    const counts = new Map<number, { over: number; under: number; total: number }>();
+
+    for (const [, entries] of visiblePairs) {
+      for (const m of entries) {
+        const starters = (m.starters ?? []).filter((id) => id && id !== '0');
+        let over = 0;
+        let under = 0;
+        let total = 0;
+
+        for (const id of starters) {
+          const team = players[id]?.team;
+          if (!isTeamLive(liveIndex, team) && !isTeamFinished(liveIndex, team)) continue;
+          total += 1;
+          const points = m.players_points?.[id] ?? 0;
+          const proj = projections.get(id)?.mean ?? 0;
+          if (points > proj) over += 1;
+          else if (points < proj) under += 1;
+        }
+
+        counts.set(m.roster_id, { over, under, total });
+      }
+    }
+
+    let mostOver: { rosterId: number; count: number; total: number } | null = null;
+    let mostUnder: { rosterId: number; count: number; total: number } | null = null;
+    for (const [rosterId, c] of counts) {
+      if (c.total === 0) continue;
+      if (!mostOver || c.over > mostOver.count) mostOver = { rosterId, count: c.over, total: c.total };
+      if (!mostUnder || c.under > mostUnder.count) mostUnder = { rosterId, count: c.under, total: c.total };
+    }
+
+    return { mostOver, mostUnder };
+  }, [visiblePairs, projections, liveIndex, players]);
+
   // Gleicht die Höhe aller Spieler-Kacheln mit Stat-Zeile (nur Vollbild) an die tatsächlich
   // höchste Kachel an - robuster als ein geschätzter Fixwert, da Stat-Text je nach Position und
   // Spielstand unterschiedlich lang ist.
@@ -696,6 +839,76 @@ export function Watchparty() {
             })}
           </div>
         </>
+      )}
+
+      {fullscreen &&
+        (liveLeaders.best || liveLeaders.bestOver || liveLeaders.worstUnder || liveLeaders.bestLive) && (
+        <div className="watchparty-live-leaders">
+          {liveLeaders.best && (
+            <LeaderTile
+              emoji="🔥"
+              title={`Bester Spieler Woche ${week}`}
+              playerId={liveLeaders.best.playerId}
+              players={players}
+              rosterId={liveLeaders.best.rosterId}
+              teamByRosterId={teamByRosterId}
+              valueLabel={`${liveLeaders.best.points.toFixed(2)} Pkt.`}
+            />
+          )}
+          {liveLeaders.bestOver && (
+            <LeaderTile
+              emoji="📈"
+              title="Größter Overperformer"
+              playerId={liveLeaders.bestOver.playerId}
+              players={players}
+              rosterId={liveLeaders.bestOver.rosterId}
+              teamByRosterId={teamByRosterId}
+              valueLabel={`${Math.abs(liveLeaders.bestOver.delta).toFixed(2)} > Proj.`}
+            />
+          )}
+          {liveLeaders.worstUnder && (
+            <LeaderTile
+              emoji="📉"
+              title="Größter Underperformer"
+              playerId={liveLeaders.worstUnder.playerId}
+              players={players}
+              rosterId={liveLeaders.worstUnder.rosterId}
+              teamByRosterId={teamByRosterId}
+              valueLabel={`${Math.abs(liveLeaders.worstUnder.delta).toFixed(2)} < Proj.`}
+              negative
+            />
+          )}
+          {liveLeaders.bestLive ? (
+            <LeaderTile
+              emoji="🟢"
+              title="Bester Spieler gerade live"
+              playerId={liveLeaders.bestLive.playerId}
+              players={players}
+              rosterId={liveLeaders.bestLive.rosterId}
+              teamByRosterId={teamByRosterId}
+              valueLabel={`${liveLeaders.bestLive.points.toFixed(2)} Pkt.`}
+            />
+          ) : (
+            <EmptyLeaderTile emoji="🟢" title="Bester Spieler gerade live" message="Keine Spiele aktiv" />
+          )}
+          {teamPerformanceLeaders.mostOver && (
+            <TeamStatTile
+              emoji="🏆"
+              title="Meiste Overperformer"
+              team={teamByRosterId.get(teamPerformanceLeaders.mostOver.rosterId)}
+              valueLabel={`${teamPerformanceLeaders.mostOver.count}x Overperformt`}
+            />
+          )}
+          {teamPerformanceLeaders.mostUnder && (
+            <TeamStatTile
+              emoji="⚠️"
+              title="Meiste Underperformer"
+              team={teamByRosterId.get(teamPerformanceLeaders.mostUnder.rosterId)}
+              valueLabel={`${teamPerformanceLeaders.mostUnder.count}x Underperformt`}
+              negative
+            />
+          )}
+        </div>
       )}
     </div>
   );
