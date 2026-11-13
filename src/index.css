@@ -239,6 +239,37 @@ h2 {
   width: 100%;
 }
 
+.watchparty-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: var(--bg);
+  padding: 1rem 1.25rem;
+  overflow-y: auto;
+}
+
+.fullscreen-exit-btn {
+  position: fixed;
+  top: 1rem;
+  right: 1.25rem;
+  z-index: 310;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.fullscreen-exit-btn:hover {
+  background: var(--border);
+}
+
 .page-title-row {
   display: flex;
   align-items: center;

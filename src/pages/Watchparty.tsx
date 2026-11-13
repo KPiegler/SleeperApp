@@ -94,6 +94,7 @@ export function Watchparty() {
   const [showInfo, setShowInfo] = useState(false);
   const [visibleMatchupIds, setVisibleMatchupIds] = useState<Set<number> | null>(null);
   const [showMatchupPicker, setShowMatchupPicker] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const [justFinishedTeams, setJustFinishedTeams] = useState<Set<string>>(new Set());
 
   const seenPlayIds = useRef<Set<string>>(new Set());
@@ -363,6 +364,27 @@ export function Watchparty() {
     };
   }, []);
 
+  // Browser-Vollbild (F11-artig) + eigener Vollbild-Modus, der Navigation/Titel ausblendet.
+  useEffect(() => {
+    const handler = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
+  const enterFullscreen = () => {
+    document.documentElement.requestFullscreen?.().catch(() => {
+      // Browser-Vollbild nicht verfügbar/verweigert - der eigene Vollbild-Modus greift trotzdem.
+    });
+    setFullscreen(true);
+  };
+
+  const exitFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+    }
+    setFullscreen(false);
+  };
+
   const projections = useMemo(
     () => buildProjections(seasonStats, projectedPoints, PROJECTION_METHOD),
     [seasonStats, projectedPoints],
@@ -410,36 +432,47 @@ export function Watchparty() {
   }
 
   return (
-    <div className="page">
-      <div className="page-title-row">
-        <h1>Live-Ticker</h1>
-        <div className="live-ticker-controls">
-          <span className="live-badge">
-            <span className="live-badge-dot" /> Live
-          </span>
-          {lastUpdated && (
-            <span className="muted live-updated">
-              Aktualisiert um{' '}
-              {lastUpdated.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+    <div className={`page${fullscreen ? ' watchparty-fullscreen' : ''}`}>
+      {!fullscreen && (
+        <div className="page-title-row">
+          <h1>Live-Ticker</h1>
+          <div className="live-ticker-controls">
+            <span className="live-badge">
+              <span className="live-badge-dot" /> Live
             </span>
-          )}
-          <button
-            type="button"
-            className="info-btn"
-            onClick={() => setShowInfo(true)}
-            aria-label="Wie wird die Gewinnwahrscheinlichkeit berechnet?"
-          >
-            i
-          </button>
-          {pairs.length > 1 && (
-            <button type="button" className="btn btn-ghost" onClick={() => setShowMatchupPicker(true)}>
-              Matchups auswählen
+            {lastUpdated && (
+              <span className="muted live-updated">
+                Aktualisiert um{' '}
+                {lastUpdated.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+            )}
+            <button
+              type="button"
+              className="info-btn"
+              onClick={() => setShowInfo(true)}
+              aria-label="Wie wird die Gewinnwahrscheinlichkeit berechnet?"
+            >
+              i
             </button>
-          )}
+            {pairs.length > 1 && (
+              <button type="button" className="btn btn-ghost" onClick={() => setShowMatchupPicker(true)}>
+                Matchups auswählen
+              </button>
+            )}
+            <button type="button" className="btn btn-ghost" onClick={enterFullscreen}>
+              ⛶ Vollbild
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {showMatchupPicker && (
+      {fullscreen && (
+        <button type="button" className="fullscreen-exit-btn" onClick={exitFullscreen} aria-label="Vollbild verlassen">
+          ✕
+        </button>
+      )}
+
+      {!fullscreen && showMatchupPicker && (
         <InfoModal title="Matchups auswählen" onClose={() => setShowMatchupPicker(false)}>
           <div className="filter-group">
             <button
@@ -472,12 +505,15 @@ export function Watchparty() {
         </InfoModal>
       )}
 
-      <p className="muted playoff-picture-note">
-        Die Gewinnwahrscheinlichkeit ist eine Näherung, keine exakte Sleeper-eigene Berechnung. Der Big-Play-Ticker
-        stammt aus einer inoffiziellen ESPN-Quelle mit unscharfer Spieler-Zuordnung per Namens-Abgleich.
-      </p>
+      {!fullscreen && (
+        <p className="muted playoff-picture-note">
+          Die Gewinnwahrscheinlichkeit ist eine Näherung, keine exakte Sleeper-eigene Berechnung. Der
+          Big-Play-Ticker stammt aus einer inoffiziellen ESPN-Quelle mit unscharfer Spieler-Zuordnung per
+          Namens-Abgleich.
+        </p>
+      )}
 
-      {showInfo && (
+      {!fullscreen && showInfo && (
         <InfoModal title="Wie wird die Gewinnwahrscheinlichkeit berechnet?" onClose={() => setShowInfo(false)}>
           <p>Für jeden Starter einer Matchup-Seite wird ein Punkte-Schätzwert und eine Unsicherheit ermittelt:</p>
           <ul>
@@ -507,7 +543,9 @@ export function Watchparty() {
         </InfoModal>
       )}
 
-      {!anyGameLive && <div className="banner">Aktuell läuft kein NFL-Spiel – Punkte werden trotzdem aktualisiert, sobald wieder gespielt wird.</div>}
+      {!fullscreen && !anyGameLive && (
+        <div className="banner">Aktuell läuft kein NFL-Spiel – Punkte werden trotzdem aktualisiert, sobald wieder gespielt wird.</div>
+      )}
 
       {touchdownAlert && (
         <TouchdownOverlay
