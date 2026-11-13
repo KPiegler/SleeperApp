@@ -37,6 +37,8 @@ export function PlayerCard({
   live,
   projection,
   redZone,
+  finished,
+  justFinished,
 }: {
   playerId: string;
   player: PlayerLite | undefined;
@@ -46,12 +48,18 @@ export function PlayerCard({
   live?: boolean;
   projection?: number | null;
   redZone?: boolean;
+  finished?: boolean;
+  justFinished?: boolean;
 }) {
   const injuryColor = player?.injury_status ? INJURY_COLORS[player.injury_status] : undefined;
   const injuryAbbr = player?.injury_status ? INJURY_ABBR[player.injury_status] ?? player.injury_status : null;
 
   return (
-    <div className={`player-card${live ? ' player-card-live' : ''}${redZone ? ' player-card-redzone' : ''}`}>
+    <div
+      className={`player-card${live ? ' player-card-live' : ''}${redZone ? ' player-card-redzone' : ''}${
+        finished ? ' player-card-finished' : ''
+      }`}
+    >
       {slot && <div className="player-card-slot">{slot}</div>}
       <PositionBadge position={player?.position ?? undefined} />
       <div className="player-card-body">
@@ -69,6 +77,7 @@ export function PlayerCard({
         </div>
       </div>
       {extra && <div className="player-card-extra">{extra}</div>}
+      {justFinished && <div className="player-card-finished-banner">Spiel beendet</div>}
     </div>
   );
 }

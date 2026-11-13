@@ -12,7 +12,8 @@ import {
   buildProjections,
   applyPositionVarianceFloor,
 } from '../lib/winProbability';
-import { buildLiveGameIndex, isTeamLive, buildRedZoneTeams } from '../lib/liveGames';
+import { buildLiveGameIndex, isTeamLive, isTeamFinished, buildRedZoneTeams, diffJustFinishedTeams } from '../lib/liveGames';
+import type { LiveGameInfo } from '../lib/liveGames';
 import { espnTeamToSleeperTeam } from '../lib/nflTeamAliases';
 import { extractBigPlays, estimatePlayPoints } from '../lib/bigPlays';
 import { initials } from '../lib/avatar';
@@ -30,6 +31,7 @@ const SLEEPER_POLL_INTERVAL_MS = 30_000;
 const ESPN_POLL_INTERVAL_MS = 20_000;
 const TICKER_ITEM_LIFETIME_MS = 20_000;
 const TICKER_MAX_ITEMS = 2;
+const FINISHED_BANNER_DURATION_MS = 4_000;
 
 // Umschaltbar für eine spätere UI-Option - 'season_average' reaktiviert die alte Heuristik
 // (grober Saison-Durchschnitt statt echter Sleeper-Wochenprojektion).
@@ -92,10 +94,13 @@ export function Watchparty() {
   const [showInfo, setShowInfo] = useState(false);
   const [visibleMatchupIds, setVisibleMatchupIds] = useState<Set<number> | null>(null);
   const [showMatchupPicker, setShowMatchupPicker] = useState(false);
+  const [justFinishedTeams, setJustFinishedTeams] = useState<Set<string>>(new Set());
 
   const seenPlayIds = useRef<Set<string>>(new Set());
   const settledEvents = useRef<Set<string>>(new Set());
   const removalTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const finishedBannerTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const prevLiveIndexRef = useRef<Map<string, LiveGameInfo>>(new Map());
 
   const week = nflState?.season === league?.season ? nflState?.week ?? null : null;
   const isLiveWeek =
@@ -256,7 +261,25 @@ export function Watchparty() {
       espn
         .getScoreboard()
         .then((data) => {
-          if (!cancelled) setScoreboard(data);
+          if (cancelled) return;
+          setScoreboard(data);
+
+          const nextIndex = buildLiveGameIndex(data);
+          const justFinished = diffJustFinishedTeams(prevLiveIndexRef.current, nextIndex);
+          prevLiveIndexRef.current = nextIndex;
+
+          if (justFinished.size > 0) {
+            setJustFinishedTeams((prev) => new Set([...prev, ...justFinished]));
+            const timer = setTimeout(() => {
+              finishedBannerTimers.current.delete(timer);
+              setJustFinishedTeams((prev) => {
+                const next = new Set(prev);
+                for (const team of justFinished) next.delete(team);
+                return next;
+              });
+            }, FINISHED_BANNER_DURATION_MS);
+            finishedBannerTimers.current.add(timer);
+          }
         })
         .catch(() => {
           // Inoffizielle ESPN-API - ein Fehlschlag pausiert nur bis zum nächsten Tick.
@@ -336,6 +359,7 @@ export function Watchparty() {
   useEffect(() => {
     return () => {
       for (const timer of removalTimers.current) clearTimeout(timer);
+      for (const timer of finishedBannerTimers.current) clearTimeout(timer);
     };
   }, []);
 
@@ -576,6 +600,8 @@ export function Watchparty() {
                           live={isTeamLive(liveIndex, players[id]?.team)}
                           projection={projections.get(id)?.mean ?? null}
                           redZone={redZoneTeams.has(players[id]?.team ?? '')}
+                          finished={isTeamFinished(liveIndex, players[id]?.team)}
+                          justFinished={justFinishedTeams.has(players[id]?.team ?? '')}
                         />
                       ))}
                     </div>
@@ -590,6 +616,8 @@ export function Watchparty() {
                             live={isTeamLive(liveIndex, players[id]?.team)}
                             projection={projections.get(id)?.mean ?? null}
                             redZone={redZoneTeams.has(players[id]?.team ?? '')}
+                            finished={isTeamFinished(liveIndex, players[id]?.team)}
+                            justFinished={justFinishedTeams.has(players[id]?.team ?? '')}
                           />
                         ))}
                     </div>

@@ -31,14 +31,13 @@ export function BigPlayTicker({
     <div className="bigplay-ticker">
       {plays.map((play) => (
         <div className={`bigplay-item bigplay-item-${play.category.toLowerCase()}`} key={play.id}>
-          <span className="bigplay-emoji">{CATEGORY_EMOJI[play.category]}</span>
-          <div className="bigplay-body">
+          <div className="bigplay-top-row">
             <div className="bigplay-headline">
-              <span className="bigplay-category">{CATEGORY_LABEL[play.category]}</span>
               {play.matchedPlayerIds.map((playerId) => {
                 const player = players[playerId];
                 const team = teamByPlayerId.get(playerId);
                 const points = play.pointsByPlayerId[playerId];
+                if (!player && !team) return null;
                 return (
                   <span className="bigplay-player-group" key={playerId}>
                     {player && (
@@ -57,8 +56,12 @@ export function BigPlayTicker({
                 );
               })}
             </div>
-            <div className="bigplay-text">{play.text}</div>
+            <div className="bigplay-category-row">
+              <span className="bigplay-emoji">{CATEGORY_EMOJI[play.category]}</span>
+              <span className="bigplay-category">{CATEGORY_LABEL[play.category]}</span>
+            </div>
           </div>
+          <div className="bigplay-text">{play.text}</div>
         </div>
       ))}
     </div>
