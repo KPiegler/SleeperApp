@@ -578,6 +578,32 @@ export function Watchparty() {
     };
   }, [fullscreen, weekStats, visiblePairs, players]);
 
+  // Gleicht die Höhe aller Leader-Kacheln (Bester Spieler, Over-/Underperformer, Team-Stats, ...)
+  // an die höchste tatsächlich gerenderte Kachel an - dieselbe Technik wie oben, da die Kacheln
+  // unterschiedlich viele Zeilen Inhalt haben (Spielername vs. nur Team-Pill z.B.).
+  useLayoutEffect(() => {
+    if (!fullscreen) return;
+    const container = pageRef.current;
+    if (!container) return;
+
+    const cards = container.querySelectorAll<HTMLElement>('.watchparty-leader-card');
+    if (cards.length === 0) return;
+
+    const applyHeights = () => {
+      for (const card of cards) card.style.height = 'auto';
+      let max = 0;
+      for (const card of cards) max = Math.max(max, card.offsetHeight);
+      for (const card of cards) card.style.height = `${max}px`;
+    };
+
+    applyHeights();
+    window.addEventListener('resize', applyHeights);
+    return () => {
+      window.removeEventListener('resize', applyHeights);
+      for (const card of cards) card.style.height = '';
+    };
+  }, [fullscreen, liveLeaders, teamPerformanceLeaders]);
+
   const toggleMatchupVisibility = (matchupId: number) => {
     setVisibleMatchupIds((prev) => {
       const base = prev ?? new Set(pairs.map(([id]) => id));
