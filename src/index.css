@@ -333,6 +333,143 @@ h2 {
   margin-bottom: 0.6rem;
 }
 
+/* Vollbild-Feinabstimmung für kleinere/niedrigere Bildschirme (z.B. 1920x1080) - die Standardwerte
+   oben bleiben für größere Screens (z.B. 2560x1440) unangetastet, hier wird alles proportional um
+   ca. 25% verkleinert, damit ohne Scrollen alles reinpasst. Rein optisch, keine Funktion ändert
+   sich dadurch. */
+@media (max-width: 1920px) {
+  .watchparty-fullscreen {
+    padding: 0.4rem 0.75rem;
+  }
+
+  .watchparty-fullscreen .matchup-grid-live {
+    gap: 0.45rem;
+  }
+
+  .watchparty-fullscreen .matchup-team {
+    padding: 0.5rem 0.7rem;
+    gap: 0.45rem;
+  }
+
+  .watchparty-fullscreen .table-avatar,
+  .watchparty-fullscreen .table-avatar-fallback {
+    width: 26px;
+    height: 26px;
+  }
+
+  .watchparty-fullscreen .matchup-header .team-name {
+    font-size: 0.72rem;
+  }
+
+  .watchparty-fullscreen .owner-name,
+  .watchparty-fullscreen .matchup-team-projection {
+    font-size: 0.68rem;
+  }
+
+  .watchparty-fullscreen .matchup-points {
+    font-size: 0.85rem;
+  }
+
+  .watchparty-fullscreen .winprob-bar {
+    height: 16px;
+    margin: 0 0.75rem;
+  }
+
+  .watchparty-fullscreen .winprob-label {
+    font-size: 0.6rem;
+    line-height: 16px;
+  }
+
+  .watchparty-fullscreen .matchup-players {
+    padding: 0.4rem;
+    gap: 0 0.3rem;
+  }
+
+  .watchparty-fullscreen .matchup-players-col {
+    gap: 0.25rem;
+  }
+
+  .watchparty-fullscreen .player-card {
+    padding: 0.35rem 0.5rem;
+    gap: 0.5rem;
+  }
+
+  .watchparty-fullscreen .player-card-with-stats {
+    min-height: 3.6rem;
+  }
+
+  .watchparty-fullscreen .position-badge {
+    min-width: 26px;
+    height: 18px;
+    font-size: 0.58rem;
+  }
+
+  .watchparty-fullscreen .player-card-name {
+    font-size: 0.78rem;
+  }
+
+  .watchparty-fullscreen .player-card-meta,
+  .watchparty-fullscreen .player-card-extra {
+    font-size: 0.68rem;
+  }
+
+  .watchparty-fullscreen .player-card-stats {
+    font-size: 0.62rem;
+  }
+
+  .watchparty-fullscreen .bigplay-ticker {
+    gap: 0.3rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .watchparty-fullscreen .bigplay-item {
+    height: 3.4rem;
+    padding: 0.35rem 0.6rem;
+  }
+
+  .watchparty-fullscreen .bigplay-emoji {
+    font-size: 1.3rem;
+  }
+
+  .watchparty-fullscreen .bigplay-category {
+    font-size: 0.95rem;
+  }
+
+  .watchparty-fullscreen .bigplay-headline {
+    font-size: 0.78rem;
+  }
+
+  .watchparty-fullscreen .bigplay-text {
+    font-size: 0.7rem;
+  }
+
+  .watchparty-fullscreen .watchparty-live-leaders {
+    gap: 1rem;
+    padding: 0.6rem 0;
+  }
+
+  .watchparty-fullscreen .watchparty-leader-card {
+    padding: 0.9rem 1.4rem;
+    min-width: 170px;
+  }
+
+  .watchparty-fullscreen .watchparty-leader-emoji {
+    font-size: 1.5rem;
+  }
+
+  .watchparty-fullscreen .watchparty-leader-title {
+    font-size: 0.7rem;
+  }
+
+  .watchparty-fullscreen .watchparty-leader-name {
+    font-size: 1rem;
+  }
+
+  .watchparty-fullscreen .watchparty-leader-value {
+    font-size: 1.2rem;
+  }
+}
+
 .fullscreen-exit-btn {
   position: fixed;
   top: 1rem;
