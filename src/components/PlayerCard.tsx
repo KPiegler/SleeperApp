@@ -39,6 +39,7 @@ export function PlayerCard({
   redZone,
   finished,
   justFinished,
+  liveStatLine,
 }: {
   playerId: string;
   player: PlayerLite | undefined;
@@ -50,6 +51,7 @@ export function PlayerCard({
   redZone?: boolean;
   finished?: boolean;
   justFinished?: boolean;
+  liveStatLine?: string | null;
 }) {
   const injuryColor = player?.injury_status ? INJURY_COLORS[player.injury_status] : undefined;
   const injuryAbbr = player?.injury_status ? INJURY_ABBR[player.injury_status] ?? player.injury_status : null;
@@ -58,7 +60,7 @@ export function PlayerCard({
     <div
       className={`player-card${live ? ' player-card-live' : ''}${redZone ? ' player-card-redzone' : ''}${
         finished ? ' player-card-finished' : ''
-      }`}
+      }${liveStatLine != null ? ' player-card-with-stats' : ''}`}
     >
       {slot && <div className="player-card-slot">{slot}</div>}
       <PositionBadge position={player?.position ?? undefined} />
@@ -75,6 +77,7 @@ export function PlayerCard({
           {(nflTeam ?? player?.team) ?? 'FA'}
           {projection != null && <span className="player-card-projection"> · Proj. {projection.toFixed(2)}</span>}
         </div>
+        {liveStatLine && <div className="player-card-stats">{liveStatLine}</div>}
       </div>
       {extra && <div className="player-card-extra">{extra}</div>}
       {justFinished && <div className="player-card-finished-banner">Spiel beendet</div>}

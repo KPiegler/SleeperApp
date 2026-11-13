@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLeagueData } from '../context/LeagueDataContext';
 import { sleeper } from '../api/sleeper';
@@ -16,6 +16,7 @@ import { buildLiveGameIndex, isTeamLive, isTeamFinished, buildRedZoneTeams, diff
 import type { LiveGameInfo } from '../lib/liveGames';
 import { espnTeamToSleeperTeam } from '../lib/nflTeamAliases';
 import { extractBigPlays, estimatePlayPoints } from '../lib/bigPlays';
+import { formatLiveStatLine } from '../lib/liveStatLine';
 import { initials } from '../lib/avatar';
 import { LoadingState, ErrorState } from '../components/LoadingError';
 import { PlayerCard } from '../components/PlayerCard';
@@ -25,7 +26,7 @@ import { InfoModal } from '../components/InfoModal';
 import type { BigPlay } from '../lib/bigPlays';
 import type { MeanVariance, ProjectionMethod } from '../lib/winProbability';
 import type { EspnScoreboard } from '../api/espn';
-import type { SleeperMatchup, Team } from '../api/types';
+import type { SleeperMatchup, Team, WeekStats } from '../api/types';
 
 const SLEEPER_POLL_INTERVAL_MS = 30_000;
 const ESPN_POLL_INTERVAL_MS = 20_000;
@@ -82,6 +83,7 @@ export function Watchparty() {
   const { teams, players, league, nflState, loading: leagueLoading, error: leagueError, reload } = useLeagueData();
 
   const [matchups, setMatchups] = useState<SleeperMatchup[]>([]);
+  const [weekStats, setWeekStats] = useState<WeekStats>({});
   const [matchLoading, setMatchLoading] = useState(true);
   const [matchError, setMatchError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -102,6 +104,7 @@ export function Watchparty() {
   const removalTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const finishedBannerTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const prevLiveIndexRef = useRef<Map<string, LiveGameInfo>>(new Map());
+  const pageRef = useRef<HTMLDivElement>(null);
 
   const week = nflState?.season === league?.season ? nflState?.week ?? null : null;
   const isLiveWeek =
@@ -148,18 +151,18 @@ export function Watchparty() {
     [players, liveIndex],
   );
 
-  // Sleeper-Matchups: initial laden + alle 30s neu, solange die aktuelle Woche läuft.
+  // Sleeper-Matchups + Roh-Stats: initial laden + alle 30s neu, solange die aktuelle Woche läuft.
   useEffect(() => {
     if (!league || week === null) return;
     let cancelled = false;
     setMatchLoading(true);
     setMatchError(null);
 
-    sleeper
-      .getMatchups(league.league_id, week)
-      .then((data) => {
+    Promise.all([sleeper.getMatchups(league.league_id, week), sleeper.getWeekStats(league.season, week)])
+      .then(([matchupData, statsData]) => {
         if (!cancelled) {
-          setMatchups(data);
+          setMatchups(matchupData);
+          setWeekStats(statsData);
           setLastUpdated(new Date());
         }
       })
@@ -179,10 +182,10 @@ export function Watchparty() {
     if (!league || week === null || !isLiveWeek) return;
     const id = setInterval(() => {
       if (document.hidden) return;
-      sleeper
-        .getMatchups(league.league_id, week)
-        .then((data) => {
-          setMatchups(data);
+      Promise.all([sleeper.getMatchups(league.league_id, week), sleeper.getWeekStats(league.season, week)])
+        .then(([matchupData, statsData]) => {
+          setMatchups(matchupData);
+          setWeekStats(statsData);
           setLastUpdated(new Date());
         })
         .catch(() => {
@@ -406,6 +409,32 @@ export function Watchparty() {
     [pairs, visibleMatchupIds],
   );
 
+  // Gleicht die Höhe aller Spieler-Kacheln mit Stat-Zeile (nur Vollbild) an die tatsächlich
+  // höchste Kachel an - robuster als ein geschätzter Fixwert, da Stat-Text je nach Position und
+  // Spielstand unterschiedlich lang ist.
+  useLayoutEffect(() => {
+    if (!fullscreen) return;
+    const container = pageRef.current;
+    if (!container) return;
+
+    const cards = container.querySelectorAll<HTMLElement>('.player-card-with-stats');
+    if (cards.length === 0) return;
+
+    const applyHeights = () => {
+      for (const card of cards) card.style.height = 'auto';
+      let max = 0;
+      for (const card of cards) max = Math.max(max, card.offsetHeight);
+      for (const card of cards) card.style.height = `${max}px`;
+    };
+
+    applyHeights();
+    window.addEventListener('resize', applyHeights);
+    return () => {
+      window.removeEventListener('resize', applyHeights);
+      for (const card of cards) card.style.height = '';
+    };
+  }, [fullscreen, weekStats, visiblePairs, players]);
+
   const toggleMatchupVisibility = (matchupId: number) => {
     setVisibleMatchupIds((prev) => {
       const base = prev ?? new Set(pairs.map(([id]) => id));
@@ -432,7 +461,7 @@ export function Watchparty() {
   }
 
   return (
-    <div className={`page${fullscreen ? ' watchparty-fullscreen' : ''}`}>
+    <div ref={pageRef} className={`page${fullscreen ? ' watchparty-fullscreen' : ''}`}>
       {!fullscreen && (
         <div className="page-title-row">
           <h1>Live-Ticker</h1>
@@ -640,6 +669,7 @@ export function Watchparty() {
                           redZone={redZoneTeams.has(players[id]?.team ?? '')}
                           finished={isTeamFinished(liveIndex, players[id]?.team)}
                           justFinished={justFinishedTeams.has(players[id]?.team ?? '')}
+                          liveStatLine={fullscreen ? formatLiveStatLine(players[id]?.position, weekStats[id]) : null}
                         />
                       ))}
                     </div>
@@ -656,6 +686,7 @@ export function Watchparty() {
                             redZone={redZoneTeams.has(players[id]?.team ?? '')}
                             finished={isTeamFinished(liveIndex, players[id]?.team)}
                             justFinished={justFinishedTeams.has(players[id]?.team ?? '')}
+                            liveStatLine={fullscreen ? formatLiveStatLine(players[id]?.position, weekStats[id]) : null}
                           />
                         ))}
                     </div>
