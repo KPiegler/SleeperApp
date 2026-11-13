@@ -20,16 +20,21 @@ export function BigPlayTicker({
   plays,
   teamByPlayerId,
   players,
+  slots,
 }: {
   plays: BigPlay[];
   teamByPlayerId: Map<string, Team>;
   players: Record<string, PlayerLite>;
+  slots: number;
 }) {
-  if (plays.length === 0) return null;
+  const items: Array<BigPlay | null> = Array.from({ length: slots }, (_, i) => plays[i] ?? null);
 
   return (
     <div className="bigplay-ticker">
-      {plays.map((play) => (
+      {items.map((play, i) =>
+        !play ? (
+          <div className="bigplay-item bigplay-item-empty" key={`empty-${i}`} aria-hidden="true" />
+        ) : (
         <div className={`bigplay-item bigplay-item-${play.category.toLowerCase()}`} key={play.id}>
           <div className="bigplay-top-row">
             <div className="bigplay-headline">
@@ -63,7 +68,8 @@ export function BigPlayTicker({
           </div>
           <div className="bigplay-text">{play.text}</div>
         </div>
-      ))}
+        ),
+      )}
     </div>
   );
 }

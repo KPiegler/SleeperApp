@@ -413,11 +413,30 @@ export function Watchparty() {
     <div className="page">
       <div className="page-title-row">
         <h1>Live-Ticker</h1>
-        {pairs.length > 1 && (
-          <button type="button" className="btn btn-ghost" onClick={() => setShowMatchupPicker(true)}>
-            Matchups auswählen
+        <div className="live-ticker-controls">
+          <span className="live-badge">
+            <span className="live-badge-dot" /> Live
+          </span>
+          {lastUpdated && (
+            <span className="muted live-updated">
+              Aktualisiert um{' '}
+              {lastUpdated.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </span>
+          )}
+          <button
+            type="button"
+            className="info-btn"
+            onClick={() => setShowInfo(true)}
+            aria-label="Wie wird die Gewinnwahrscheinlichkeit berechnet?"
+          >
+            i
           </button>
-        )}
+          {pairs.length > 1 && (
+            <button type="button" className="btn btn-ghost" onClick={() => setShowMatchupPicker(true)}>
+              Matchups auswählen
+            </button>
+          )}
+        </div>
       </div>
 
       {showMatchupPicker && (
@@ -453,30 +472,9 @@ export function Watchparty() {
         </InfoModal>
       )}
 
-      <div className="week-picker">
-        <span className="live-badge">
-          <span className="live-badge-dot" /> Live
-        </span>
-        {lastUpdated && (
-          <span className="muted live-updated">
-            Aktualisiert um{' '}
-            {lastUpdated.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-          </span>
-        )}
-      </div>
-
       <p className="muted playoff-picture-note">
-        Die Gewinnwahrscheinlichkeit ist eine Näherung, keine exakte Sleeper-eigene Berechnung.
-        <button
-          type="button"
-          className="info-btn"
-          onClick={() => setShowInfo(true)}
-          aria-label="Wie wird die Gewinnwahrscheinlichkeit berechnet?"
-        >
-          i
-        </button>{' '}
-        Der Big-Play-Ticker stammt aus einer inoffiziellen ESPN-Quelle mit unscharfer Spieler-Zuordnung per
-        Namens-Abgleich.
+        Die Gewinnwahrscheinlichkeit ist eine Näherung, keine exakte Sleeper-eigene Berechnung. Der Big-Play-Ticker
+        stammt aus einer inoffiziellen ESPN-Quelle mit unscharfer Spieler-Zuordnung per Namens-Abgleich.
       </p>
 
       {showInfo && (
@@ -520,7 +518,7 @@ export function Watchparty() {
         />
       )}
 
-      <BigPlayTicker plays={ticker} teamByPlayerId={teamByPlayerId} players={players} />
+      <BigPlayTicker plays={ticker} teamByPlayerId={teamByPlayerId} players={players} slots={TICKER_MAX_ITEMS} />
 
       {matchLoading && <LoadingState label="Lade Matchups…" />}
       {matchError && <ErrorState message={matchError} onRetry={() => setRetryKey((k) => k + 1)} />}
@@ -573,21 +571,23 @@ export function Watchparty() {
                     )}
                   </div>
 
-                  {winProbA !== null && (
-                    <div className="winprob-bar">
-                      <div
-                        className={`winprob-segment ${winProbA >= 0.5 ? 'winprob-segment-win' : 'winprob-segment-lose'}`}
-                        style={{ width: `${(winProbA * 100).toFixed(1)}%` }}
-                      />
-                      <div
-                        className={`winprob-segment ${winProbA >= 0.5 ? 'winprob-segment-lose' : 'winprob-segment-win'}`}
-                        style={{ width: `${(100 - winProbA * 100).toFixed(1)}%` }}
-                      />
-                      <span className="winprob-label">
-                        {(winProbA * 100).toFixed(0)}% / {(100 - winProbA * 100).toFixed(0)}%
-                      </span>
-                    </div>
-                  )}
+                  <div className={`winprob-bar${winProbA === null ? ' winprob-bar-empty' : ''}`}>
+                    {winProbA !== null && (
+                      <>
+                        <div
+                          className={`winprob-segment ${winProbA >= 0.5 ? 'winprob-segment-win' : 'winprob-segment-lose'}`}
+                          style={{ width: `${(winProbA * 100).toFixed(1)}%` }}
+                        />
+                        <div
+                          className={`winprob-segment ${winProbA >= 0.5 ? 'winprob-segment-lose' : 'winprob-segment-win'}`}
+                          style={{ width: `${(100 - winProbA * 100).toFixed(1)}%` }}
+                        />
+                        <span className="winprob-label">
+                          {(winProbA * 100).toFixed(0)}% / {(100 - winProbA * 100).toFixed(0)}%
+                        </span>
+                      </>
+                    )}
+                  </div>
 
                   <div className="matchup-players">
                     <div className="matchup-players-col">
