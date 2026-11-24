@@ -169,6 +169,7 @@ export function Watchparty() {
   const [justFinishedTeams, setJustFinishedTeams] = useState<Set<string>>(new Set());
 
   const seenPlayIds = useRef<Set<string>>(new Set());
+  const baselinedEvents = useRef<Set<string>>(new Set());
   const settledEvents = useRef<Set<string>>(new Set());
   const removalTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const finishedBannerTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
@@ -326,13 +327,18 @@ export function Watchparty() {
 
   // ESPN-Scoreboard: Live-Status pro NFL-Team, Basis für "spielt gerade"-Highlight und Play-by-Play-Polling.
   useEffect(() => {
-    if (!isLiveWeek) return;
+    if (!isLiveWeek || week === null || !league) return;
     let cancelled = false;
+    const scoreboardParams = {
+      week,
+      year: league.season,
+      seasontype: nflState?.season_type === 'post' ? (3 as const) : (2 as const),
+    };
 
     const tick = () => {
       if (document.hidden) return;
       espn
-        .getScoreboard()
+        .getScoreboard(scoreboardParams)
         .then((data) => {
           if (cancelled) return;
           setScoreboard(data);
@@ -365,7 +371,7 @@ export function Watchparty() {
       cancelled = true;
       clearInterval(id);
     };
-  }, [isLiveWeek]);
+  }, [isLiveWeek, week, league, nflState?.season_type]);
 
   // ESPN-Play-by-Play: nur für laufende Spiele mit mindestens einem in unserer Liga rostierten Spieler.
   useEffect(() => {
@@ -397,11 +403,19 @@ export function Watchparty() {
           if (cancelled) return;
           if (event.status.type.state === 'post') settledEvents.current.add(event.id);
 
-          const newPlays = extractBigPlays(event.id, summary).filter((p) => !seenPlayIds.current.has(p.id));
-          if (newPlays.length === 0) return;
+          const allPlays = extractBigPlays(event.id, summary);
+          const newPlays = allPlays.filter((p) => !seenPlayIds.current.has(p.id));
+
+          // Erster Abruf für dieses Spiel in dieser Sitzung: alle bereits existierenden Plays
+          // gelten als "schon gesehen", lösen aber nichts aus - das waren Plays von VOR dem
+          // Öffnen/Neuladen der Seite, keine, die gerade live passieren. Nur Plays, die ab dem
+          // nächsten Poll NEU dazukommen, zählen als echtes Live-Ereignis.
+          const isBaseline = !baselinedEvents.current.has(event.id);
+          baselinedEvents.current.add(event.id);
+          for (const play of newPlays) seenPlayIds.current.add(play.id);
+          if (isBaseline || newPlays.length === 0) return;
 
           for (const play of newPlays) {
-            seenPlayIds.current.add(play.id);
             play.pointsByPlayerId = estimatePlayPoints(play, candidates, league.scoring_settings);
             play.matchedPlayerIds = Object.keys(play.pointsByPlayerId);
           }

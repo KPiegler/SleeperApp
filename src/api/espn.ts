@@ -59,7 +59,18 @@ async function getJSON<T>(url: string): Promise<T> {
  * sich jederzeit ohne Vorwarnung ändern.
  */
 export const espn = {
-  getScoreboard: () => getJSON<EspnScoreboard>(`${BASE}/scoreboard`),
+  /**
+   * Ohne Parameter rät ESPN selbst, welche Woche "aktuell" ist - das kann von Sleepers eigener
+   * Wochen-Zählung abweichen (z.B. Sleeper zeigt schon die kommende Woche, ESPN noch die gerade
+   * abgeschlossene). Woche/Jahr/Saisonphase deshalb immer explizit von Sleeper übernehmen, nicht
+   * auf ESPNs Default verlassen.
+   */
+  getScoreboard: (params?: { week: number; year: string; seasontype: 2 | 3 }) =>
+    getJSON<EspnScoreboard>(
+      params
+        ? `${BASE}/scoreboard?week=${params.week}&year=${params.year}&seasontype=${params.seasontype}`
+        : `${BASE}/scoreboard`,
+    ),
   getSummary: (eventId: string) => getJSON<EspnSummary>(`${BASE}/summary?event=${eventId}`),
   /** Pro-Spiel-Historie eines Spielers inkl. NFL-Team zu jeder Woche - deckt unterjährige Trades ab. */
   getGamelog: (espnId: string) => getJSON<EspnGamelog>(`${ATHLETES_BASE}/${espnId}/gamelog`),
