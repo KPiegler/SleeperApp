@@ -25,7 +25,7 @@ import { TeamPill } from '../components/TeamPill';
 import { BigPlayTicker } from '../components/BigPlayTicker';
 import { TouchdownOverlay } from '../components/TouchdownOverlay';
 import { InfoModal } from '../components/InfoModal';
-import type { BigPlay } from '../lib/bigPlays';
+import type { BigPlay, BigPlayCategory } from '../lib/bigPlays';
 import type { MeanVariance, ProjectionMethod } from '../lib/winProbability';
 import type { EspnScoreboard } from '../api/espn';
 import type { PlayerLite, SleeperMatchup, Team, WeekStats } from '../api/types';
@@ -183,6 +183,7 @@ export function Watchparty() {
   const finishedBannerTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const prevLiveIndexRef = useRef<Map<string, LiveGameInfo>>(new Map());
   const pageRef = useRef<HTMLDivElement>(null);
+  const testRunRef = useRef(0);
 
   const week = nflState?.season === league?.season ? nflState?.week ?? null : null;
   const isLiveWeek =
@@ -519,6 +520,71 @@ export function Watchparty() {
     [pairs, visibleMatchupIds],
   );
 
+  /**
+   * Test-Button: simuliert einen Touchdown + 1-2 weitere Big Plays mit echten, aktuell
+   * geladenen Spielern (damit Teamfarben/Foto/Sound realistisch getestet werden können), ohne
+   * auf einen echten Live-Play zu warten. Nutzt dieselben State-Updates wie der echte
+   * ESPN-Play-by-Play-Pfad (setTicker/setTouchdownAlert), simuliert aber keine echten ESPN-Daten.
+   */
+  const simulateBigPlays = () => {
+    unlockTouchdownSound();
+
+    const starterIds = visiblePairs
+      .flatMap(([, entries]) => entries.flatMap((m) => (m.starters ?? []).filter((id): id is string => !!id && id !== '0')))
+      .filter((id) => players[id]);
+    if (starterIds.length === 0) return;
+
+    const withPhoto = starterIds.filter((id) => players[id]?.espn_id);
+    const pool = withPhoto.length > 0 ? withPhoto : starterIds;
+
+    testRunRef.current += 1;
+    const run = testRunRef.current;
+    const runId = `test-${Date.now()}`;
+
+    const tdPlayerId = pool[run % pool.length];
+    const tdPlayer = players[tdPlayerId];
+    const tdPlay: BigPlay = {
+      id: `${runId}-td`,
+      eventId: 'test',
+      category: 'TD',
+      text: `(Test) ${tdPlayer.first_name} ${tdPlayer.last_name} mit einem 34-Yard-Touchdown-Lauf`,
+      rawType: 'Rush',
+      statYardage: 34,
+      matchedPlayerIds: [tdPlayerId],
+      pointsByPlayerId: { [tdPlayerId]: 6.4 },
+    };
+
+    const extras: Array<{ category: BigPlayCategory; label: string; rawType: string; yards: number | null; points: number }> = [
+      { category: 'LONG_PLAY', label: '28-Yard-Catch', rawType: 'Pass Reception', yards: 28, points: 2.8 },
+      { category: 'INT', label: 'Interception', rawType: 'Interception', yards: null, points: -2 },
+      { category: 'FUMBLE_LOST', label: 'verlorenes Fumble', rawType: 'Fumble Recovery (Opponent)', yards: null, points: -2 },
+    ];
+    const extra = extras[run % extras.length];
+    const extraPlayerId = pool[(run + 1) % pool.length];
+    const extraPlayer = players[extraPlayerId];
+    const extraPlay: BigPlay = {
+      id: `${runId}-extra`,
+      eventId: 'test',
+      category: extra.category,
+      text: `(Test) ${extraPlayer.first_name} ${extraPlayer.last_name} - ${extra.label}`,
+      rawType: extra.rawType,
+      statYardage: extra.yards,
+      matchedPlayerIds: [extraPlayerId],
+      pointsByPlayerId: { [extraPlayerId]: extra.points },
+    };
+
+    setTicker((prev) => [extraPlay, tdPlay, ...prev].slice(0, TICKER_MAX_ITEMS));
+    setTouchdownAlert(tdPlay);
+
+    for (const play of [tdPlay, extraPlay]) {
+      const timer = setTimeout(() => {
+        removalTimers.current.delete(timer);
+        setTicker((prev) => prev.filter((p) => p.id !== play.id));
+      }, TICKER_ITEM_LIFETIME_MS);
+      removalTimers.current.add(timer);
+    }
+  };
+
   // Nur für den Vollbild-Modus: Bester Spieler der Woche, größter Over-/Underperformer und
   // bester gerade LIVE spielender Spieler, alles über die sichtbaren Matchups hinweg, auf Basis
   // der eh schon gepollten Live-Punkte/Projections/Spielstatus.
@@ -700,6 +766,9 @@ export function Watchparty() {
               aria-label={soundEnabled ? 'Sound deaktivieren' : 'Sound aktivieren'}
             >
               {soundEnabled ? '🔊' : '🔇'}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={simulateBigPlays}>
+              🧪 Test-Plays
             </button>
             {pairs.length > 1 && (
               <button type="button" className="btn btn-ghost" onClick={() => setShowMatchupPicker(true)}>

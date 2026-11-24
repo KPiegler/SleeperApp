@@ -5,7 +5,7 @@ import { espnHeadshotUrl, espnTeamLogoUrl } from '../lib/espnMedia';
 import type { BigPlay } from '../lib/bigPlays';
 import type { PlayerLite, Team } from '../api/types';
 
-const OVERLAY_DURATION_MS = 2600;
+const OVERLAY_DURATION_MS = 4000;
 
 export function TouchdownOverlay({
   play,
