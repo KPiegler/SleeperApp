@@ -17,6 +17,7 @@ import type { LiveGameInfo } from '../lib/liveGames';
 import { espnTeamToSleeperTeam } from '../lib/nflTeamAliases';
 import { extractBigPlays, estimatePlayPoints } from '../lib/bigPlays';
 import { formatLiveStatLine } from '../lib/liveStatLine';
+import { unlockTouchdownSound, playTouchdownSound } from '../lib/touchdownSound';
 import { initials } from '../lib/avatar';
 import { LoadingState, ErrorState } from '../components/LoadingError';
 import { PlayerCard } from '../components/PlayerCard';
@@ -29,7 +30,7 @@ import type { MeanVariance, ProjectionMethod } from '../lib/winProbability';
 import type { EspnScoreboard } from '../api/espn';
 import type { PlayerLite, SleeperMatchup, Team, WeekStats } from '../api/types';
 
-const SLEEPER_POLL_INTERVAL_MS = 30_000;
+const SLEEPER_POLL_INTERVAL_MS = 15_000;
 const ESPN_POLL_INTERVAL_MS = 20_000;
 const TICKER_ITEM_LIFETIME_MS = 20_000;
 const TICKER_MAX_ITEMS = 2;
@@ -167,6 +168,13 @@ export function Watchparty() {
   const [showMatchupPicker, setShowMatchupPicker] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [justFinishedTeams, setJustFinishedTeams] = useState<Set<string>>(new Set());
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    try {
+      return localStorage.getItem('watchparty-sound') !== 'off';
+    } catch {
+      return true;
+    }
+  });
 
   const seenPlayIds = useRef<Set<string>>(new Set());
   const baselinedEvents = useRef<Set<string>>(new Set());
@@ -450,6 +458,25 @@ export function Watchparty() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!touchdownAlert || !soundEnabled) return;
+    playTouchdownSound();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [touchdownAlert?.id]);
+
+  const toggleSound = () => {
+    unlockTouchdownSound();
+    setSoundEnabled((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('watchparty-sound', next ? 'on' : 'off');
+      } catch {
+        // localStorage nicht verfügbar (z.B. privater Modus) - Einstellung gilt nur für diese Sitzung.
+      }
+      return next;
+    });
+  };
+
   // Browser-Vollbild (F11-artig) + eigener Vollbild-Modus, der Navigation/Titel ausblendet.
   useEffect(() => {
     const handler = () => setFullscreen(!!document.fullscreenElement);
@@ -666,6 +693,14 @@ export function Watchparty() {
             >
               i
             </button>
+            <button
+              type="button"
+              className="btn btn-ghost sound-toggle-btn"
+              onClick={toggleSound}
+              aria-label={soundEnabled ? 'Sound deaktivieren' : 'Sound aktivieren'}
+            >
+              {soundEnabled ? '🔊' : '🔇'}
+            </button>
             {pairs.length > 1 && (
               <button type="button" className="btn btn-ghost" onClick={() => setShowMatchupPicker(true)}>
                 Matchups auswählen
@@ -679,9 +714,19 @@ export function Watchparty() {
       )}
 
       {fullscreen && (
-        <button type="button" className="fullscreen-exit-btn" onClick={exitFullscreen} aria-label="Vollbild verlassen">
-          ✕
-        </button>
+        <>
+          <button
+            type="button"
+            className="sound-toggle-btn sound-toggle-btn-fullscreen"
+            onClick={toggleSound}
+            aria-label={soundEnabled ? 'Sound deaktivieren' : 'Sound aktivieren'}
+          >
+            {soundEnabled ? '🔊' : '🔇'}
+          </button>
+          <button type="button" className="fullscreen-exit-btn" onClick={exitFullscreen} aria-label="Vollbild verlassen">
+            ✕
+          </button>
+        </>
       )}
 
       {!fullscreen && showMatchupPicker && (
@@ -846,7 +891,7 @@ export function Watchparty() {
                           key={`a-${id}`}
                           playerId={id}
                           player={players[id]}
-                          extra={`${(a.players_points?.[id] ?? 0).toFixed(1)} Pkt.`}
+                          extra={`${(a.players_points?.[id] ?? 0).toFixed(2)} Pkt.`}
                           live={isTeamLive(liveIndex, players[id]?.team)}
                           projection={projections.get(id)?.mean ?? null}
                           redZone={redZoneTeams.has(players[id]?.team ?? '')}
@@ -863,7 +908,7 @@ export function Watchparty() {
                             key={`b-${id}`}
                             playerId={id}
                             player={players[id]}
-                            extra={`${(b.players_points?.[id] ?? 0).toFixed(1)} Pkt.`}
+                            extra={`${(b.players_points?.[id] ?? 0).toFixed(2)} Pkt.`}
                             live={isTeamLive(liveIndex, players[id]?.team)}
                             projection={projections.get(id)?.mean ?? null}
                             redZone={redZoneTeams.has(players[id]?.team ?? '')}
